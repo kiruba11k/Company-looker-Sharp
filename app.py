@@ -13,8 +13,8 @@ import random
 
 # Page configuration
 st.set_page_config(
-    page_title=" SME Digital Transformation Scout",
-    page_icon="",
+    page_title="🚀 SME Digital Transformation Scout",
+    page_icon="🤖",
     layout="wide"
 )
 
@@ -41,17 +41,6 @@ class SMEDigitalTransformationScout:
             "digital transformation", "cloud migration", "automation", "business intelligence",
             "SAP Business One", "Zoho", "Tally", "QuickBooks", "Microsoft 365"
         ]
-        
-        # Job platforms for hiring trend analysis
-        self.JOB_PLATFORMS = {
-            "LinkedIn": ["linkedin.com/jobs", "linkedin.com/company"],
-            "Naukri": ["naukri.com", "naukrihub.com"],
-            "Indeed": ["indeed.com", "indeed.co.in"],
-            "Glassdoor": ["glassdoor.com", "glassdoor.co.in"],
-            "Monster": ["monster.com", "monsterindia.com"],
-            "TimesJobs": ["timesjobs.com"],
-            "Shine": ["shine.com"]
-        }
         
         # SME indicators and revenue ranges
         self.SME_INDICATORS = [
@@ -113,84 +102,6 @@ class SMEDigitalTransformationScout:
             st.error(f"Google News error: {str(e)}")
             return []
 
-    def search_job_platforms(self, company_name, max_results=10):
-        """Search job platforms for hiring trends of specific companies"""
-        hiring_articles = []
-        
-        # Build queries for each job platform
-        queries = [
-            f'"{company_name}" hiring India',
-            f'"{company_name}" careers India',
-            f'"{company_name}" jobs India',
-            f'"{company_name}" recruitment India',
-            f'"{company_name}" new positions India'
-        ]
-        
-        for query in queries[:3]:  # Use first 3 queries to avoid too many requests
-            try:
-                # Use DuckDuckGo to search job platforms
-                base_url = "https://html.duckduckgo.com/html/"
-                params = {
-                    'q': f"{query} site:linkedin.com OR site:naukri.com OR site:indeed.com OR site:glassdoor.com",
-                    'kl': 'in-en',
-                }
-                
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                }
-                
-                response = self.session.post(base_url, data=params, headers=headers, timeout=15)
-                
-                if response.status_code == 200:
-                    soup = BeautifulSoup(response.content, 'html.parser')
-                    results = soup.find_all('div', class_='result')
-                    
-                    for result in results[:max_results]:
-                        try:
-                            title_elem = result.find('a', class_='result__a')
-                            snippet_elem = result.find('a', class_='result__snippet')
-                            
-                            if title_elem:
-                                title = title_elem.text.strip()
-                                link = title_elem.get('href')
-                                snippet = snippet_elem.text.strip() if snippet_elem else ""
-                                
-                                # Extract actual URL from DuckDuckGo redirect
-                                if link and 'uddg=' in link:
-                                    match = re.search(r'uddg=([^&]+)', link)
-                                    if match:
-                                        link = urllib.parse.unquote(match.group(1))
-                                
-                                # Identify job platform
-                                platform = "Other"
-                                for platform_name, domains in self.JOB_PLATFORMS.items():
-                                    if any(domain in link for domain in domains):
-                                        platform = platform_name
-                                        break
-                                
-                                hiring_articles.append({
-                                    'title': title,
-                                    'link': link,
-                                    'description': snippet,
-                                    'source': platform,
-                                    'date': '2024+',
-                                    'content': f"{title}. {snippet}",
-                                    'company': company_name,
-                                    'type': 'job_posting'
-                                })
-                        except Exception:
-                            continue
-                
-                time.sleep(1)  # Be respectful to the search engine
-                
-            except Exception as e:
-                st.warning(f"Job platform search error for {company_name}: {str(e)}")
-                continue
-        
-        return hiring_articles
-
     def build_sme_search_queries(self, selected_industries, technologies):
         """Build targeted queries for SME digital transformation"""
         base_queries = []
@@ -232,7 +143,7 @@ class SMEDigitalTransformationScout:
         all_articles = []
         
         for term in search_terms:
-            st.info(f" Searching: {term}")
+            st.info(f"🔍 Searching: {term}")
             
             # Google News search
             google_articles = self.search_google_news_rss(term, max_results_per_source)
@@ -342,7 +253,7 @@ class SMEDigitalTransformationScout:
         extracted_data = []
         total_batches = (len(articles) + batch_size - 1) // batch_size
         
-        st.info(f" Processing {len(articles)} articles in {total_batches} batches of {batch_size}")
+        st.info(f"📊 Processing {len(articles)} articles in {total_batches} batches of {batch_size}")
         
         for batch_num in range(total_batches):
             start_idx = batch_num * batch_size
@@ -407,7 +318,7 @@ If no SME companies found, return: {{"companies": []}}"""
         processed_count = 0
         for i, article in enumerate(batch_articles):
             try:
-                status_text.text(f" Batch {batch_num}/{total_batches} - Analyzing article {i+1}/{len(batch_articles)}...")
+                status_text.text(f"🤖 Batch {batch_num}/{total_batches} - Analyzing article {i+1}/{len(batch_articles)}...")
                 progress_bar.progress((i + 1) / len(batch_articles))
                 
                 content = article['content']
@@ -501,64 +412,11 @@ If no SME companies found, return: {{"companies": []}}"""
         status_text.empty()
         
         if processed_count > 0:
-            st.success(f" Batch {batch_num}: Processed {processed_count} SME companies")
+            st.success(f"✅ Batch {batch_num}: Processed {processed_count} SME companies")
         else:
-            st.warning(f" Batch {batch_num}: No SME companies found in this batch")
+            st.warning(f"⚠️ Batch {batch_num}: No SME companies found in this batch")
         
         return batch_data
-
-    def enhance_with_job_platform_data(self, companies):
-        """Enhance company data with job platform hiring information"""
-        enhanced_companies = []
-        
-        st.info ("Enhancing with job platform data...")
-        progress_bar = st.progress(0)
-        
-        for i, company in enumerate(companies):
-            progress_bar.progress((i + 1) / len(companies))
-            
-            company_name = company['Company Name']
-            
-            # Search job platforms for this company
-            job_articles = self.search_job_platforms(company_name, max_results=5)
-            
-            # Analyze hiring trends from job platforms
-            hiring_platforms = []
-            recent_hiring = False
-            
-            for job_article in job_articles:
-                platform = job_article['source']
-                if platform not in hiring_platforms:
-                    hiring_platforms.append(platform)
-                
-                # Check if recent hiring (2024+)
-                if '2024' in job_article['content'] or '2025' in job_article['content']:
-                    recent_hiring = True
-            
-            # Update hiring trends
-            if hiring_platforms:
-                current_hiring = company['Hiring Trends 2025-2026']
-                if current_hiring == 'Not specified':
-                    company['Hiring Trends 2025-2026'] = f"Active hiring on {', '.join(hiring_platforms)}"
-                else:
-                    company['Hiring Trends 2025-2026'] = f"{current_hiring}. Also on {', '.join(hiring_platforms)}"
-                
-                company['Job Platforms'] = ', '.join(hiring_platforms)
-                company['Recent Hiring Activity'] = "Yes" if recent_hiring else "Possible"
-            else:
-                company['Job Platforms'] = "Not found"
-                company['Recent Hiring Activity'] = "No data"
-            
-            # Calculate relevance score
-            company['Relevance Score'] = self.calculate_sme_relevance_score(company)
-            
-            enhanced_companies.append(company)
-            
-            # Small delay to be respectful to search engines
-            time.sleep(0.5)
-        
-        progress_bar.empty()
-        return enhanced_companies
 
     def calculate_sme_relevance_score(self, company):
         """Calculate relevance score specifically for SME digital transformation"""
@@ -593,10 +451,6 @@ If no SME companies found, return: {{"companies": []}}"""
         if 'active' in hiring or 'hiring' in hiring or 'expanding' in hiring:
             score += 2
         
-        # Job platform presence bonus
-        if company.get('Job Platforms') != 'Not found':
-            score += 1
-        
         # Revenue range scoring (prefer smaller SMEs)
         revenue_range = company.get('Revenue Range', '').lower()
         if '1-10' in revenue_range or 'under' in revenue_range:
@@ -626,11 +480,11 @@ If no SME companies found, return: {{"companies": []}}"""
         return unique_companies
 
     def generate_enhanced_output(self, companies):
-        """Generate enhanced output with all SME and hiring fields"""
+        """Generate enhanced output with all SME fields"""
         if not companies:
             return "No SME digital transformation companies found"
         
-        output_lines = ["Company Name\tWebsite\tIndustry\tRevenue\tRevenue Range\tEmployee Count\tDigital Transformation\tTransformation Details\tHiring Trends 2025-2026\tCompany Size\tGrowth Stage\tJob Platforms\tRecent Hiring Activity\tConfidence\tRelevance Score\tSource Link"]
+        output_lines = ["Company Name\tWebsite\tIndustry\tRevenue\tRevenue Range\tEmployee Count\tDigital Transformation\tTransformation Details\tHiring Trends 2025-2026\tCompany Size\tGrowth Stage\tConfidence\tRelevance Score\tSource Link"]
         
         for company in companies:
             company_name = str(company['Company Name']).replace('\t', ' ').replace('\n', ' ')
@@ -644,13 +498,11 @@ If no SME companies found, return: {{"companies": []}}"""
             hiring_trends = str(company['Hiring Trends 2025-2026']).replace('\t', ' ')
             company_size = str(company['Company Size']).replace('\t', ' ')
             growth_stage = str(company['Growth Stage']).replace('\t', ' ')
-            job_platforms = str(company.get('Job Platforms', 'Not found')).replace('\t', ' ')
-            recent_hiring = str(company.get('Recent Hiring Activity', 'No data')).replace('\t', ' ')
             confidence = str(company['Confidence']).replace('\t', ' ')
             relevance_score = str(company['Relevance Score'])
             source_link = str(company['Source Link']).replace('\t', ' ')
             
-            output_line = f"{company_name}\t{website}\t{industry}\t{revenue}\t{revenue_range}\t{employee_count}\t{digital_transformation}\t{transformation_details}\t{hiring_trends}\t{company_size}\t{growth_stage}\t{job_platforms}\t{recent_hiring}\t{confidence}\t{relevance_score}\t{source_link}"
+            output_line = f"{company_name}\t{website}\t{industry}\t{revenue}\t{revenue_range}\t{employee_count}\t{digital_transformation}\t{transformation_details}\t{hiring_trends}\t{company_size}\t{growth_stage}\t{confidence}\t{relevance_score}\t{source_link}"
             output_lines.append(output_line)
         
         return "\n".join(output_lines)
@@ -660,7 +512,7 @@ If no SME companies found, return: {{"companies": []}}"""
         if not companies:
             return
         
-        st.header(" SME Digital Transformation Insights")
+        st.header("📊 SME Digital Transformation Insights")
         
         # Create columns for different insights
         col1, col2, col3 = st.columns(3)
@@ -670,22 +522,26 @@ If no SME companies found, return: {{"companies": []}}"""
             sizes = [company['Company Size'] for company in companies]
             size_df = pd.DataFrame({'Company Size': sizes})
             size_counts = size_df['Company Size'].value_counts()
-            st.bar_chart(size_counts)
+            if not size_counts.empty:
+                st.bar_chart(size_counts)
+            else:
+                st.info("No size data available")
         
         with col2:
-            st.subheader("Job Platform Presence")
-            platforms = []
+            st.subheader("Technology Adoption")
+            tech_keywords = ['ERP', 'AI', 'Cloud', 'RPA', 'Analytics', 'DMS', 'Automation']
+            tech_counts = {}
             for company in companies:
-                if company.get('Job Platforms') != 'Not found':
-                    platform_list = company['Job Platforms'].split(', ')
-                    platforms.extend(platform_list)
+                details = company['Transformation Details'].lower()
+                for tech in tech_keywords:
+                    if tech.lower() in details:
+                        tech_counts[tech] = tech_counts.get(tech, 0) + 1
             
-            if platforms:
-                platform_df = pd.DataFrame({'Platform': platforms})
-                platform_counts = platform_df['Platform'].value_counts()
-                st.bar_chart(platform_counts)
+            if tech_counts:
+                tech_df = pd.DataFrame(list(tech_counts.items()), columns=['Technology', 'Count'])
+                st.bar_chart(tech_df.set_index('Technology'))
             else:
-                st.info("No job platform data available")
+                st.info("No technology data available")
         
         with col3:
             st.subheader("Hiring Trends 2025-2026")
@@ -698,324 +554,712 @@ If no SME companies found, return: {{"companies": []}}"""
                 st.metric("Total SMEs Analyzed", total_companies)
             else:
                 st.metric("SMEs Hiring", "0%")
+
+class JobPlatformScout:
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        })
         
-        # Technology adoption in SMEs
-        st.subheader("Technology Adoption in SMEs")
-        tech_keywords = ['ERP', 'AI', 'Cloud', 'RPA', 'Analytics', 'DMS', 'Automation']
-        tech_counts = {}
-        for company in companies:
-            details = company['Transformation Details'].lower()
-            for tech in tech_keywords:
-                if tech.lower() in details:
-                    tech_counts[tech] = tech_counts.get(tech, 0) + 1
+        # Job platforms to search
+        self.JOB_PLATFORMS = {
+            "LinkedIn": ["linkedin.com/jobs", "linkedin.com/company"],
+            "Naukri": ["naukri.com", "naukrihub.com"],
+            "Indeed": ["indeed.com", "indeed.co.in"],
+            "Glassdoor": ["glassdoor.com", "glassdoor.co.in"],
+            "Monster": ["monster.com", "monsterindia.com"],
+            "TimesJobs": ["timesjobs.com"],
+            "Shine": ["shine.com"]
+        }
         
-        if tech_counts:
-            tech_df = pd.DataFrame(list(tech_counts.items()), columns=['Technology', 'Count'])
-            st.bar_chart(tech_df.set_index('Technology'))
-        else:
-            st.info("No specific technology data available")
+        # Job roles related to digital transformation
+        self.DIGITAL_TRANSFORMATION_ROLES = [
+            "ERP", "DMS", "DCM", "RPA", "AI", "Data Analytics", "Digital Transformation",
+            "IT Manager", "CTO", "Technology Head", "Digital Manager",
+            "Business Analyst", "Systems Analyst", "IT Project Manager"
+        ]
+
+    def search_jobs_by_company(self, company_names, max_results_per_company=10):
+        """Search job platforms for specific companies"""
+        all_job_listings = []
+        
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        for i, company_name in enumerate(company_names):
+            status_text.text(f"🔍 Searching jobs for: {company_name}")
+            progress_bar.progress((i + 1) / len(company_names))
+            
+            company_jobs = self._search_company_jobs(company_name, max_results_per_company)
+            all_job_listings.extend(company_jobs)
+            
+            time.sleep(1)  # Be respectful to search engines
+        
+        progress_bar.empty()
+        status_text.empty()
+        
+        return all_job_listings
+
+    def _search_company_jobs(self, company_name, max_results):
+        """Search for jobs for a specific company"""
+        jobs_found = []
+        
+        # Build search queries
+        queries = [
+            f'"{company_name}" hiring India',
+            f'"{company_name}" careers India',
+            f'"{company_name}" jobs India',
+            f'"{company_name}" recruitment India'
+        ]
+        
+        for query in queries[:2]:  # Use first 2 queries
+            try:
+                # Use DuckDuckGo to search job platforms
+                base_url = "https://html.duckduckgo.com/html/"
+                platform_sites = " OR ".join([f"site:{domain}" for platforms in self.JOB_PLATFORMS.values() for domain in platforms])
+                params = {
+                    'q': f"{query} ({platform_sites})",
+                    'kl': 'in-en',
+                }
+                
+                response = self.session.post(base_url, data=params, timeout=15)
+                
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                    results = soup.find_all('div', class_='result')
+                    
+                    for result in results[:max_results]:
+                        try:
+                            title_elem = result.find('a', class_='result__a')
+                            snippet_elem = result.find('a', class_='result__snippet')
+                            
+                            if title_elem:
+                                title = title_elem.text.strip()
+                                link = title_elem.get('href')
+                                snippet = snippet_elem.text.strip() if snippet_elem else ""
+                                
+                                # Extract actual URL from DuckDuckGo redirect
+                                if link and 'uddg=' in link:
+                                    match = re.search(r'uddg=([^&]+)', link)
+                                    if match:
+                                        link = urllib.parse.unquote(match.group(1))
+                                
+                                # Identify job platform
+                                platform = "Other"
+                                for platform_name, domains in self.JOB_PLATFORMS.items():
+                                    if any(domain in link for domain in domains):
+                                        platform = platform_name
+                                        break
+                                
+                                # Check if it's a digital transformation role
+                                role_type = "General"
+                                for role in self.DIGITAL_TRANSFORMATION_ROLES:
+                                    if role.lower() in title.lower() or role.lower() in snippet.lower():
+                                        role_type = "Digital Transformation"
+                                        break
+                                
+                                jobs_found.append({
+                                    'Company': company_name,
+                                    'Job Title': title,
+                                    'Platform': platform,
+                                    'Link': link,
+                                    'Description': snippet,
+                                    'Role Type': role_type,
+                                    'Date Found': datetime.now().strftime('%Y-%m-%d')
+                                })
+                        except Exception:
+                            continue
+                
+                time.sleep(1)  # Be respectful to the search engine
+                
+            except Exception as e:
+                st.warning(f"Job search error for {company_name}: {str(e)}")
+                continue
+        
+        return jobs_found
+
+    def search_jobs_by_technology(self, technologies, locations=None, max_results=20):
+        """Search for jobs by specific technologies"""
+        if locations is None:
+            locations = ["India", "Bangalore", "Hyderabad", "Pune", "Chennai"]
+        
+        all_tech_jobs = []
+        
+        for tech in technologies[:3]:  # Search for top 3 technologies
+            for location in locations[:2]:  # Search in top 2 locations
+                try:
+                    query = f"{tech} jobs {location}"
+                    
+                    base_url = "https://html.duckduckgo.com/html/"
+                    platform_sites = " OR ".join([f"site:{domain}" for platforms in self.JOB_PLATFORMS.values() for domain in platforms])
+                    params = {
+                        'q': f"{query} ({platform_sites})",
+                        'kl': 'in-en',
+                    }
+                    
+                    response = self.session.post(base_url, data=params, timeout=15)
+                    
+                    if response.status_code == 200:
+                        soup = BeautifulSoup(response.content, 'html.parser')
+                        results = soup.find_all('div', class_='result')
+                        
+                        for result in results[:max_results]:
+                            try:
+                                title_elem = result.find('a', class_='result__a')
+                                snippet_elem = result.find('a', class_='result__snippet')
+                                
+                                if title_elem:
+                                    title = title_elem.text.strip()
+                                    link = title_elem.get('href')
+                                    snippet = snippet_elem.text.strip() if snippet_elem else ""
+                                    
+                                    # Extract company name from title/snippet
+                                    company_name = self._extract_company_name(title, snippet)
+                                    
+                                    # Extract actual URL
+                                    if link and 'uddg=' in link:
+                                        match = re.search(r'uddg=([^&]+)', link)
+                                        if match:
+                                            link = urllib.parse.unquote(match.group(1))
+                                    
+                                    # Identify platform
+                                    platform = "Other"
+                                    for platform_name, domains in self.JOB_PLATFORMS.items():
+                                        if any(domain in link for domain in domains):
+                                            platform = platform_name
+                                            break
+                                    
+                                    all_tech_jobs.append({
+                                        'Company': company_name,
+                                        'Job Title': title,
+                                        'Technology': tech,
+                                        'Location': location,
+                                        'Platform': platform,
+                                        'Link': link,
+                                        'Description': snippet,
+                                        'Date Found': datetime.now().strftime('%Y-%m-%d')
+                                    })
+                            except Exception:
+                                continue
+                    
+                    time.sleep(1)
+                    
+                except Exception as e:
+                    st.warning(f"Technology job search error for {tech}: {str(e)}")
+                    continue
+        
+        return all_tech_jobs
+
+    def _extract_company_name(self, title, snippet):
+        """Extract company name from job title and description"""
+        # Common patterns in job titles
+        patterns = [
+            r'at\s+([A-Za-z0-9\s&]+)',
+            r'-\s*([A-Za-z0-9\s&]+)\s* hiring',
+            r'([A-Za-z0-9\s&]+)\s*is hiring',
+            r'jobs? at\s+([A-Za-z0-9\s&]+)'
+        ]
+        
+        text = f"{title} {snippet}"
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+        
+        return "Unknown Company"
+
+    def generate_jobs_output(self, job_listings):
+        """Generate TSV output for job listings"""
+        if not job_listings:
+            return "No job listings found"
+        
+        output_lines = ["Company\tJob Title\tPlatform\tRole Type\tTechnology\tLocation\tLink\tDate Found"]
+        
+        for job in job_listings:
+            company = str(job.get('Company', '')).replace('\t', ' ')
+            job_title = str(job.get('Job Title', '')).replace('\t', ' ')
+            platform = str(job.get('Platform', '')).replace('\t', ' ')
+            role_type = str(job.get('Role Type', 'General')).replace('\t', ' ')
+            technology = str(job.get('Technology', '')).replace('\t', ' ')
+            location = str(job.get('Location', '')).replace('\t', ' ')
+            link = str(job.get('Link', '')).replace('\t', ' ')
+            date_found = str(job.get('Date Found', ''))
+            
+            output_line = f"{company}\t{job_title}\t{platform}\t{role_type}\t{technology}\t{location}\t{link}\t{date_found}"
+            output_lines.append(output_line)
+        
+        return "\n".join(output_lines)
 
 def main():
-    st.title(" SME Digital Transformation Scout")
+    st.title("🚀 SME Digital Transformation Scout")
     st.markdown("""
     **Discover Small-to-Medium Indian companies undergoing digital transformation**  
     *Targeting Manufacturing, BFSI, Healthcare & Hospitals (Excluding Kerala)*
     """)
     
     if not st.secrets.get("GROQ_API_KEY"):
-        st.error(" Groq API key required (free at https://console.groq.com)")
-       
+        st.error("🔑 Groq API key required (free at https://console.groq.com)")
+        st.info("""
+        **Get free API key:**
+        1. Go to https://console.groq.com
+        2. Sign up for free account  
+        3. Get your API key
+        4. Add to Streamlit secrets: `GROQ_API_KEY = "your_key"`
+        """)
         return
     
-    scout = SMEDigitalTransformationScout()
+    # Initialize scouts
+    sme_scout = SMEDigitalTransformationScout()
+    job_scout = JobPlatformScout()
     
-    # Initialize session state for articles and companies
+    # Initialize session state
     if 'articles' not in st.session_state:
         st.session_state.articles = []
     if 'all_companies' not in st.session_state:
         st.session_state.all_companies = []
     
-    with st.sidebar:
-        st.header(" SME Search Configuration")
-        
-        st.subheader("Target Industries")
-        selected_industries = st.multiselect(
-            "Select Industries:",
-            scout.INDUSTRIES,
-            default=["Manufacturing", "BFSI", "Healthcare", "Logistics"]
-        )
-        
-        st.subheader("Digital Technologies")
-        selected_technologies = st.multiselect(
-            "Focus Technologies:",
-            scout.DIGITAL_TECHNOLOGIES,
-            default=[]
-        )
-        
-        st.subheader("Search Settings")
-        max_per_source = st.slider("Results per Search", 5, 20, 12)
-        
-        st.subheader("Analysis Settings")
-        batch_size = st.slider("Batch Size for AI Analysis", 10, 50, 25)
-        delay_between_batches = st.slider("Delay between batches (seconds)", 1, 10, 2)
-        
-        st.subheader("Job Platform Enhancement")
-        enable_job_search = st.checkbox("Enable Job Platform Search", value=True)
-        max_job_results = st.slider("Max Job Results per Company", 1, 10, 5)
-        
-        st.info("""
-        **SME-Focused Features:**
-        - Small-to-Medium Enterprise targeting
-        - Revenue range analysis (1-250 crore)
-        - Job platform integration (LinkedIn, Naukri, Indeed)
-        - Hiring trends 2025-2026
-        - Kerala companies excluded
-        - Batch processing for large datasets
-        """)
-        
-        st.warning("**Focus:** Small-to-Medium Enterprises (Revenue under 250 crore)")
-
-    st.header(" SME Company Discovery")
+    # Create tabs for different functionalities
+    tab1, tab2 = st.tabs(["🏢 SME Digital Transformation Scout", "💼 Job Platform Search"])
     
-    # Search Phase
-    if st.button(" Search for SME Articles", type="primary", use_container_width=True):
-        if not selected_industries:
-            st.error(" Please select at least one industry")
-            return
+    with tab1:
+        st.header("🏢 SME Digital Transformation Discovery")
+        
+        with st.sidebar:
+            st.header("⚙️ SME Search Configuration")
             
-        if not selected_technologies:
-            st.error(" Please select at least one technology focus")
-            return
-        
-        # Generate targeted SME search queries
-        search_queries = scout.build_sme_search_queries(selected_industries, selected_technologies)
-        
-        st.info(f" Using {len(search_queries)} targeted SME queries across {len(selected_industries)} industries")
-        
-        with st.spinner(" Comprehensive SME digital transformation search in progress..."):
-            # Perform hybrid search
-            articles = scout.hybrid_search(search_queries, max_per_source)
-            st.session_state.articles = articles
+            st.subheader("Target Industries")
+            selected_industries = st.multiselect(
+                "Select Industries:",
+                sme_scout.INDUSTRIES,
+                default=["Manufacturing", "BFSI", "Healthcare"]
+            )
             
-            if not articles:
-                st.error("""
-                 No articles found. Possible issues:
-                - Internet connectivity
-                - Search engines temporarily unavailable
-                - Try different industries or technologies
-                """)
+            st.subheader("Digital Technologies")
+            selected_technologies = st.multiselect(
+                "Focus Technologies:",
+                sme_scout.DIGITAL_TECHNOLOGIES,
+                default=["ERP", "AI", "RPA", "DMS"]
+            )
+            
+            st.subheader("Search Settings")
+            max_per_source = st.slider("Results per Search", 5, 20, 12)
+            
+            st.subheader("Analysis Settings")
+            batch_size = st.slider("Batch Size for AI Analysis", 10, 50, 25)
+            delay_between_batches = st.slider("Delay between batches (seconds)", 1, 10, 2)
+            
+            st.info("""
+            **SME-Focused Features:**
+            - Small-to-Medium Enterprise targeting
+            - Revenue range analysis (1-250 crore)
+            - Hiring trends 2025-2026
+            - Kerala companies excluded
+            - Batch processing for large datasets
+            """)
+        
+        # Search Phase
+        if st.button("🌐 Search for SME Articles", type="primary", use_container_width=True):
+            if not selected_industries:
+                st.error("❌ Please select at least one industry")
+                return
+                
+            if not selected_technologies:
+                st.error("❌ Please select at least one technology focus")
                 return
             
-            st.success(f" Found {len(articles)} relevant SME articles")
+            # Generate targeted SME search queries
+            search_queries = sme_scout.build_sme_search_queries(selected_industries, selected_technologies)
             
-            # Display search summary
-            col1, col2 = st.columns(2)
-            with col1:
-                google_count = len([a for a in articles if a['source'] == 'Google News'])
-                st.metric("Google News", google_count)
-            with col2:
-                other_count = len([a for a in articles if a['source'] != 'Google News'])
-                st.metric("Other Sources", other_count)
-    
-    # Show article management if we have articles
-    if st.session_state.articles:
-        st.markdown("---")
-        st.header(" Article Management")
-        
-        articles = st.session_state.articles
-        st.info(f" Total articles available: {len(articles)}")
-        
-        # Article preview
-        with st.expander("Preview SME Articles (First 10)"):
-            for i, article in enumerate(articles[:10]):
-                st.write(f"**{i+1}. {article['title']}**")
-                st.write(f"Source: {article['source']} | Date: {article['date']}")
-                st.write(f"[Read more]({article['link']})")
-                st.markdown("---")
-        
-        # Analysis range selection
-        st.subheader(" AI Analysis Range")
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            start_index = st.number_input("Start Index", min_value=0, max_value=len(articles)-1, value=0)
-        with col2:
-            end_index = st.number_input("End Index", min_value=1, max_value=len(articles), value=min(100, len(articles)))
-        with col3:
-            st.metric("Articles to Analyze", end_index - start_index)
-        
-        # Batch analysis options
-        st.subheader(" Batch Analysis Options")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            analyze_all = st.button("Analyze All Articles", use_container_width=True)
-        with col2:
-            analyze_range = st.button("Analyze Selected Range", use_container_width=True, type="primary")
-        
-        if analyze_all or analyze_range:
-            if analyze_all:
-                articles_to_analyze = articles
-                st.info(f"Analyzing ALL {len(articles)} SME articles")
-            else:
-                articles_to_analyze = articles[start_index:end_index]
-                st.info(f"Analyzing articles {start_index} to {end_index} ({len(articles_to_analyze)} articles)")
+            st.info(f"🔍 Using {len(search_queries)} targeted SME queries across {len(selected_industries)} industries")
             
-            # AI Analysis Phase
-            st.markdown("---")
-            st.header(" AI Analysis Phase")
-            
-            with st.spinner(" AI analyzing for SME digital transformation companies..."):
-                # Extract companies using Groq with batch processing
-                companies_data = scout.extract_company_data_with_groq(
-                    articles_to_analyze, 
-                    batch_size=batch_size,
-                    delay_between_batches=delay_between_batches
-                )
+            with st.spinner("🌐 Comprehensive SME digital transformation search in progress..."):
+                # Perform hybrid search
+                articles = sme_scout.hybrid_search(search_queries, max_per_source)
+                st.session_state.articles = articles
                 
-                if not companies_data:
+                if not articles:
                     st.error("""
-                    No SME digital transformation companies extracted. This could mean:
-                    - Articles don't contain specific SME digital transformation info
-                    - Try expanding industry selection
-                    - Adjust technology focus
-                    - Increase number of articles analyzed
+                    ❌ No articles found. Possible issues:
+                    - Internet connectivity
+                    - Search engines temporarily unavailable
+                    - Try different industries or technologies
                     """)
                     return
                 
-                # Enhance with job platform data if enabled
-                if enable_job_search:
-                    st.info(" Enhancing with job platform data...")
-                    enhanced_companies = scout.enhance_with_job_platform_data(companies_data)
-                else:
-                    enhanced_companies = companies_data
-                    for company in enhanced_companies:
-                        company['Relevance Score'] = scout.calculate_sme_relevance_score(company)
+                st.success(f"✅ Found {len(articles)} relevant SME articles")
                 
-                # Filter and rank companies
-                ranked_companies = scout.filter_and_rank_sme_companies(enhanced_companies)
-                
-                # Store in session state
+                # Display search summary
+                col1, col2 = st.columns(2)
+                with col1:
+                    google_count = len([a for a in articles if a['source'] == 'Google News'])
+                    st.metric("Google News", google_count)
+                with col2:
+                    other_count = len([a for a in articles if a['source'] != 'Google News'])
+                    st.metric("Other Sources", other_count)
+        
+        # Show article management if we have articles
+        if st.session_state.articles:
+            st.markdown("---")
+            st.header("📄 Article Management")
+            
+            articles = st.session_state.articles
+            st.info(f"📚 Total articles available: {len(articles)}")
+            
+            # Article preview
+            with st.expander("📋 Preview SME Articles (First 10)"):
+                for i, article in enumerate(articles[:10]):
+                    st.write(f"**{i+1}. {article['title']}**")
+                    st.write(f"Source: {article['source']} | Date: {article['date']}")
+                    st.write(f"[Read more]({article['link']})")
+                    st.markdown("---")
+            
+            # Analysis range selection
+            st.subheader("🔍 AI Analysis Range")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                start_index = st.number_input("Start Index", min_value=0, max_value=len(articles)-1, value=0, key="sme_start")
+            with col2:
+                end_index = st.number_input("End Index", min_value=1, max_value=len(articles), value=min(100, len(articles)), key="sme_end")
+            with col3:
+                st.metric("Articles to Analyze", end_index - start_index)
+            
+            # Batch analysis options
+            st.subheader("⚡ Batch Analysis Options")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                analyze_all = st.button("🚀 Analyze All Articles", use_container_width=True, key="analyze_all")
+            with col2:
+                analyze_range = st.button("🎯 Analyze Selected Range", use_container_width=True, type="primary", key="analyze_range")
+            
+            if analyze_all or analyze_range:
                 if analyze_all:
-                    st.session_state.all_companies = ranked_companies
+                    articles_to_analyze = articles
+                    st.info(f"🔄 Analyzing ALL {len(articles)} SME articles")
                 else:
-                    # Merge with existing companies, removing duplicates
-                    existing_companies = st.session_state.all_companies
-                    all_companies_dict = {}
-                    
-                    # Add existing companies to dict
-                    for company in existing_companies:
-                        all_companies_dict[company['Company Name']] = company
-                    
-                    # Add new companies, updating if exists
-                    for company in ranked_companies:
-                        all_companies_dict[company['Company Name']] = company
-                    
-                    st.session_state.all_companies = list(all_companies_dict.values())
-                    st.session_state.all_companies.sort(key=lambda x: x['Relevance Score'], reverse=True)
+                    articles_to_analyze = articles[start_index:end_index]
+                    st.info(f"🔄 Analyzing articles {start_index} to {end_index} ({len(articles_to_analyze)} articles)")
                 
-                st.success(f"Found {len(ranked_companies)} SME companies in this analysis!")
-                st.success(f" Total SME companies in database: {len(st.session_state.all_companies)}")
+                # AI Analysis Phase
+                st.markdown("---")
+                st.header("🤖 AI Analysis Phase")
+                
+                with st.spinner("🤖 AI analyzing for SME digital transformation companies..."):
+                    # Extract companies using Groq with batch processing
+                    companies_data = sme_scout.extract_company_data_with_groq(
+                        articles_to_analyze, 
+                        batch_size=batch_size,
+                        delay_between_batches=delay_between_batches
+                    )
+                    
+                    if not companies_data:
+                        st.error("""
+                        ❌ No SME digital transformation companies extracted. This could mean:
+                        - Articles don't contain specific SME digital transformation info
+                        - Try expanding industry selection
+                        - Adjust technology focus
+                        - Increase number of articles analyzed
+                        """)
+                        return
+                    
+                    # Calculate relevance scores
+                    for company in companies_data:
+                        company['Relevance Score'] = sme_scout.calculate_sme_relevance_score(company)
+                    
+                    # Filter and rank companies
+                    ranked_companies = sme_scout.filter_and_rank_sme_companies(companies_data)
+                    
+                    # Store in session state
+                    if analyze_all:
+                        st.session_state.all_companies = ranked_companies
+                    else:
+                        # Merge with existing companies, removing duplicates
+                        existing_companies = st.session_state.all_companies
+                        all_companies_dict = {}
+                        
+                        # Add existing companies to dict
+                        for company in existing_companies:
+                            all_companies_dict[company['Company Name']] = company
+                        
+                        # Add new companies, updating if exists
+                        for company in ranked_companies:
+                            all_companies_dict[company['Company Name']] = company
+                        
+                        st.session_state.all_companies = list(all_companies_dict.values())
+                        st.session_state.all_companies.sort(key=lambda x: x['Relevance Score'], reverse=True)
+                    
+                    st.success(f"🎯 Found {len(ranked_companies)} SME companies in this analysis!")
+                    st.success(f"💾 Total SME companies in database: {len(st.session_state.all_companies)}")
+        
+        # Show results if we have companies
+        if st.session_state.all_companies:
+            st.markdown("---")
+            st.header("📈 SME Digital Transformation Results")
+            
+            companies = st.session_state.all_companies
+            
+            # Statistics
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total SMEs", len(companies))
+            with col2:
+                confirmed_smes = len([c for c in companies if 'sme' in c['Company Size'].lower()])
+                st.metric("Confirmed SMEs", confirmed_smes)
+            with col3:
+                hiring_smes = len([c for c in companies if 'hiring' in c['Hiring Trends 2025-2026'].lower()])
+                st.metric("SMEs Hiring", hiring_smes)
+            with col4:
+                high_confidence = len([c for c in companies if c['Confidence'] == 'high'])
+                st.metric("High Confidence", high_confidence)
+            
+            # Display insights
+            sme_scout.display_sme_insights(companies)
+            
+            # Company details table
+            st.subheader("🏢 SME Company Details")
+            df = pd.DataFrame(companies)
+            
+            # Enhanced styling for SMEs
+            def color_company_size(val):
+                if 'sme' in str(val).lower() or 'small' in str(val).lower():
+                    return 'background-color: #90EE90; color: black; font-weight: bold;'
+                elif 'growing' in str(val).lower():
+                    return 'background-color: #FFE4B5; color: black;'
+                return ''
+            
+            def color_hiring_trends(val):
+                if 'hiring' in str(val).lower() or 'active' in str(val).lower():
+                    return 'background-color: #87CEEB; color: black; font-weight: bold;'
+                return ''
+            
+            # Select and style relevant columns
+            display_columns = ['Company Name', 'Industry', 'Revenue Range', 'Company Size', 
+                              'Digital Transformation', 'Hiring Trends 2025-2026', 'Confidence', 'Relevance Score']
+            
+            display_df = df[display_columns] if all(col in df.columns for col in display_columns) else df
+            
+            styled_df = display_df.style.map(color_company_size, subset=['Company Size'])\
+                                      .map(color_hiring_trends, subset=['Hiring Trends 2025-2026'])
+            
+            # Display the dataframe
+            st.dataframe(
+                styled_df,
+                column_config={
+                    "Relevance Score": st.column_config.ProgressColumn(
+                        "SME Relevance",
+                        help="How relevant this SME is to digital transformation",
+                        format="%f",
+                        min_value=0,
+                        max_value=10,
+                    )
+                },
+                use_container_width=True,
+                hide_index=True,
+                height=600
+            )
+            
+            # Enhanced Output
+            st.subheader("📋 Enhanced TSV Output - Copy Ready")
+            enhanced_output = sme_scout.generate_enhanced_output(companies)
+            st.code(enhanced_output, language='text')
+            
+            # Download button
+            st.download_button(
+                label="💾 Download Complete SME Data",
+                data=enhanced_output,
+                file_name=f"sme_digital_transformation_{datetime.now().strftime('%Y%m%d_%H%M')}.tsv",
+                mime="text/tab-separated-values",
+                use_container_width=True
+            )
+            
+            # Clear data button
+            if st.button("🗑️ Clear All Data", use_container_width=True, key="clear_sme"):
+                st.session_state.articles = []
+                st.session_state.all_companies = []
+                st.rerun()
     
-    # Show results if we have companies
-    if st.session_state.all_companies:
-        st.markdown("---")
-        st.header(" SME Digital Transformation Results")
+    with tab2:
+        st.header("💼 Job Platform Search")
+        st.markdown("Search for job announcements on platforms like LinkedIn, Naukri, Indeed, Glassdoor, etc.")
         
-        companies = st.session_state.all_companies
-        
-        # Statistics
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Total SMEs", len(companies))
-        with col2:
-            confirmed_smes = len([c for c in companies if 'sme' in c['Company Size'].lower()])
-            st.metric("Confirmed SMEs", confirmed_smes)
-        with col3:
-            hiring_smes = len([c for c in companies if 'hiring' in c['Hiring Trends 2025-2026'].lower()])
-            st.metric("SMEs Hiring", hiring_smes)
-        with col4:
-            platform_presence = len([c for c in companies if c.get('Job Platforms') != 'Not found'])
-            st.metric("On Job Platforms", platform_presence)
-        
-        # Display insights
-        scout.display_sme_insights(companies)
-        
-        # Company details table
-        st.subheader(" SME Company Details")
-        df = pd.DataFrame(companies)
-        
-        # Enhanced styling for SMEs
-        def color_company_size(val):
-            if 'sme' in str(val).lower() or 'small' in str(val).lower():
-                return 'background-color: #90EE90; color: black; font-weight: bold;'
-            elif 'growing' in str(val).lower():
-                return 'background-color: #FFE4B5; color: black;'
-            return ''
-        
-        def color_hiring_activity(val):
-            if 'active' in str(val).lower() or 'yes' in str(val).lower():
-                return 'background-color: #87CEEB; color: black; font-weight: bold;'
-            return ''
-        
-        def color_job_platforms(val):
-            if val != 'Not found':
-                return 'background-color: #D8BFD8; color: black; font-weight: bold;'
-            return ''
-        
-        # Select and style relevant columns
-        display_columns = ['Company Name', 'Industry', 'Revenue Range', 'Company Size', 
-                          'Digital Transformation', 'Hiring Trends 2025-2026', 'Job Platforms',
-                          'Recent Hiring Activity', 'Confidence', 'Relevance Score']
-        
-        display_df = df[display_columns] if all(col in df.columns for col in display_columns) else df
-        
-        styled_df = display_df.style.map(color_company_size, subset=['Company Size'])\
-                                  .map(color_hiring_activity, subset=['Recent Hiring Activity'])\
-                                  .map(color_job_platforms, subset=['Job Platforms'])
-        
-        # Display the dataframe
-        st.dataframe(
-            styled_df,
-            column_config={
-                "Relevance Score": st.column_config.ProgressColumn(
-                    "SME Relevance",
-                    help="How relevant this SME is to digital transformation",
-                    format="%f",
-                    min_value=0,
-                    max_value=10,
+        with st.sidebar:
+            st.header("🔍 Job Search Configuration")
+            
+            st.subheader("Search Type")
+            search_type = st.radio(
+                "Select Search Type:",
+                ["Search by Company Names", "Search by Technologies"]
+            )
+            
+            if search_type == "Search by Company Names":
+                st.subheader("Company Names")
+                company_input = st.text_area(
+                    "Enter company names (one per line):",
+                    placeholder="TCS\nInfosys\nWipro\nHCL\n...",
+                    height=150
                 )
-            },
-            use_container_width=True,
-            hide_index=True,
-            height=600
-        )
+                max_jobs_per_company = st.slider("Max jobs per company", 1, 20, 5)
+                
+            else:  # Search by Technologies
+                st.subheader("Technologies")
+                tech_input = st.text_area(
+                    "Enter technologies (one per line):",
+                    placeholder="ERP\nAI\nData Analytics\nRPA\nDMS\n...",
+                    height=150
+                )
+                locations = st.text_input(
+                    "Locations (comma separated):",
+                    "India, Bangalore, Hyderabad, Pune, Chennai"
+                )
+                max_tech_jobs = st.slider("Max jobs per technology", 1, 30, 10)
         
-        # Enhanced Output
-        st.subheader(" Enhanced TSV Output - Copy Ready")
-        enhanced_output = scout.generate_enhanced_output(companies)
-        st.code(enhanced_output, language='text')
+        if search_type == "Search by Company Names":
+            if st.button("🔍 Search Jobs by Company", type="primary", use_container_width=True):
+                if not company_input.strip():
+                    st.error("❌ Please enter at least one company name")
+                else:
+                    company_names = [name.strip() for name in company_input.split('\n') if name.strip()]
+                    st.info(f"🔍 Searching jobs for {len(company_names)} companies...")
+                    
+                    with st.spinner("Searching job platforms..."):
+                        job_listings = job_scout.search_jobs_by_company(company_names, max_jobs_per_company)
+                    
+                    if job_listings:
+                        st.success(f"✅ Found {len(job_listings)} job listings")
+                        
+                        # Display job insights
+                        st.subheader("📊 Job Search Insights")
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            platforms = [job['Platform'] for job in job_listings]
+                            platform_counts = pd.Series(platforms).value_counts()
+                            st.metric("Job Platforms", len(platform_counts))
+                        
+                        with col2:
+                            digital_roles = len([job for job in job_listings if job['Role Type'] == 'Digital Transformation'])
+                            st.metric("Digital Transformation Roles", digital_roles)
+                        
+                        with col3:
+                            companies_found = len(set([job['Company'] for job in job_listings]))
+                            st.metric("Companies Found", companies_found)
+                        
+                        # Platform distribution
+                        st.subheader("Platform Distribution")
+                        if not platform_counts.empty:
+                            st.bar_chart(platform_counts)
+                        
+                        # Job listings table
+                        st.subheader("💼 Job Listings")
+                        jobs_df = pd.DataFrame(job_listings)
+                        
+                        # Style the dataframe
+                        def color_role_type(val):
+                            if val == 'Digital Transformation':
+                                return 'background-color: #90EE90; color: black; font-weight: bold;'
+                            return ''
+                        
+                        def color_platform(val):
+                            if val in ['LinkedIn', 'Naukri', 'Indeed']:
+                                return 'background-color: #FFE4B5; color: black;'
+                            return ''
+                        
+                        styled_jobs_df = jobs_df.style.map(color_role_type, subset=['Role Type'])\
+                                                    .map(color_platform, subset=['Platform'])
+                        
+                        st.dataframe(
+                            styled_jobs_df,
+                            column_config={
+                                "Link": st.column_config.LinkColumn("Job Link")
+                            },
+                            use_container_width=True,
+                            hide_index=True,
+                            height=600
+                        )
+                        
+                        # Download jobs data
+                        st.subheader("📋 Jobs TSV Output")
+                        jobs_output = job_scout.generate_jobs_output(job_listings)
+                        st.code(jobs_output, language='text')
+                        
+                        st.download_button(
+                            label="💾 Download Jobs Data",
+                            data=jobs_output,
+                            file_name=f"job_listings_{datetime.now().strftime('%Y%m%d_%H%M')}.tsv",
+                            mime="text/tab-separated-values",
+                            use_container_width=True
+                        )
+                    else:
+                        st.error("❌ No job listings found for the specified companies")
         
-        # Download button
-        st.download_button(
-            label=" Download Complete SME Data",
-            data=enhanced_output,
-            file_name=f"sme_digital_transformation_{datetime.now().strftime('%Y%m%d_%H%M')}.tsv",
-            mime="text/tab-separated-values",
-            use_container_width=True
-        )
-        
-        # Clear data button
-        if st.button(" Clear All Data", use_container_width=True):
-            st.session_state.articles = []
-            st.session_state.all_companies = []
-            st.rerun()
-
-    else:
-        # Enhanced instructions
-        st.markdown("""
-    
-        """)
+        else:  # Search by Technologies
+            if st.button("🔍 Search Jobs by Technology", type="primary", use_container_width=True):
+                if not tech_input.strip():
+                    st.error("❌ Please enter at least one technology")
+                else:
+                    technologies = [tech.strip() for tech in tech_input.split('\n') if tech.strip()]
+                    location_list = [loc.strip() for loc in locations.split(',') if loc.strip()]
+                    
+                    st.info(f"🔍 Searching {len(technologies)} technologies in {len(location_list)} locations...")
+                    
+                    with st.spinner("Searching job platforms for technology roles..."):
+                        tech_jobs = job_scout.search_jobs_by_technology(technologies, location_list, max_tech_jobs)
+                    
+                    if tech_jobs:
+                        st.success(f"✅ Found {len(tech_jobs)} technology job listings")
+                        
+                        # Display tech job insights
+                        st.subheader("📊 Technology Job Insights")
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            tech_counts = pd.Series([job['Technology'] for job in tech_jobs]).value_counts()
+                            st.metric("Technologies Found", len(tech_counts))
+                        
+                        with col2:
+                            companies_found = len(set([job['Company'] for job in tech_jobs]))
+                            st.metric("Companies Hiring", companies_found)
+                        
+                        with col3:
+                            platforms = [job['Platform'] for job in tech_jobs]
+                            platform_counts = pd.Series(platforms).value_counts()
+                            st.metric("Job Platforms", len(platform_counts))
+                        
+                        # Technology distribution
+                        st.subheader("Technology Distribution")
+                        if not tech_counts.empty:
+                            st.bar_chart(tech_counts)
+                        
+                        # Tech job listings table
+                        st.subheader("💻 Technology Job Listings")
+                        tech_jobs_df = pd.DataFrame(tech_jobs)
+                        
+                        st.dataframe(
+                            tech_jobs_df,
+                            column_config={
+                                "Link": st.column_config.LinkColumn("Job Link")
+                            },
+                            use_container_width=True,
+                            hide_index=True,
+                            height=600
+                        )
+                        
+                        # Download tech jobs data
+                        st.subheader("📋 Technology Jobs TSV Output")
+                        tech_jobs_output = job_scout.generate_jobs_output(tech_jobs)
+                        st.code(tech_jobs_output, language='text')
+                        
+                        st.download_button(
+                            label="💾 Download Tech Jobs Data",
+                            data=tech_jobs_output,
+                            file_name=f"tech_jobs_{datetime.now().strftime('%Y%m%d_%H%M')}.tsv",
+                            mime="text/tab-separated-values",
+                            use_container_width=True
+                        )
+                    else:
+                        st.error("❌ No technology job listings found")
 
 if __name__ == "__main__":
     main()
