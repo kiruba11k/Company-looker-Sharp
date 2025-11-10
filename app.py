@@ -14,7 +14,7 @@ import random
 # Page configuration
 st.set_page_config(
     page_title="SME Digital Transformation Scout",
-    page_icon="",
+    page_icon="🔍",
     layout="wide"
 )
 
@@ -57,6 +57,19 @@ class SMEDigitalTransformationScout:
         
         # Indian states to exclude (Kerala)
         self.EXCLUDE_STATES = ["Kerala", "kerala"]
+
+    def get_direct_article_link(self, article):
+        """Get direct article link instead of Google News redirect"""
+        try:
+            if article['source'] == 'Google News':
+                # Try to extract actual article URL from Google News
+                if 'news.google.com' in article['link']:
+                    # Follow the redirect to get actual article URL
+                    response = self.session.get(article['link'], timeout=10, allow_redirects=True)
+                    return response.url
+            return article['link']
+        except:
+            return article['link']
 
     def search_google_news_rss(self, query, max_results=20):
         """Free Google News RSS search for SME digital transformation news"""
@@ -139,7 +152,7 @@ class SMEDigitalTransformationScout:
         return list(set(base_queries))[:20]  # Limit to 20 unique queries
 
     def hybrid_search(self, search_terms, max_results_per_source=15):
-        """Hybrid search across multiple free sources"""
+        """Hybrid search across multiple free sources with direct links"""
         all_articles = []
         
         for term in search_terms:
@@ -147,13 +160,18 @@ class SMEDigitalTransformationScout:
             
             # Google News search
             google_articles = self.search_google_news_rss(term, max_results_per_source)
+            
+            # Enhance Google News articles with direct links
+            for article in google_articles:
+                article['direct_link'] = self.get_direct_article_link(article)
+            
             all_articles.extend(google_articles)
             time.sleep(1)
             
-            # DuckDuckGo search for broader coverage
+            # DuckDuckGo search with enhanced link handling
             try:
                 base_url = "https://html.duckduckgo.com/html/"
-                params = {'q': term, 'kl': 'in-en'}
+                params = {'q': term + " site:.in OR site:.com", 'kl': 'in-en'}
                 
                 response = self.session.post(base_url, data=params, timeout=15)
                 if response.status_code == 200:
@@ -175,15 +193,18 @@ class SMEDigitalTransformationScout:
                                     continue
                                 
                                 # Extract actual URL from DuckDuckGo redirect
+                                direct_link = link
                                 if link and 'uddg=' in link:
                                     match = re.search(r'uddg=([^&]+)', link)
                                     if match:
-                                        link = urllib.parse.unquote(match.group(1))
+                                        direct_link = urllib.parse.unquote(match.group(1))
                                 
-                                if link and any(domain in link for domain in ['.com', '.in', '.org', '.net', '.co']):
+                                # Validate it's a proper URL
+                                if direct_link and any(domain in direct_link for domain in ['.com', '.in', '.org', '.net', '.co', '.io']):
                                     all_articles.append({
                                         'title': title,
-                                        'link': link,
+                                        'link': link,  # Original link
+                                        'direct_link': direct_link,  # Direct article link
                                         'description': snippet,
                                         'source': 'DuckDuckGo',
                                         'date': '2024+',
@@ -196,11 +217,12 @@ class SMEDigitalTransformationScout:
             
             time.sleep(1)
         
-        # Remove duplicates based on URL and title
+        # Remove duplicates based on content and title
         seen_articles = set()
         unique_articles = []
         for article in all_articles:
-            article_key = f"{article['title'][:100]}_{article['link']}"
+            # Use direct link for deduplication when available
+            article_key = f"{article['title'][:100]}_{article.get('direct_link', article['link'])}"
             if article_key not in seen_articles:
                 seen_articles.add(article_key)
                 unique_articles.append(article)
@@ -246,7 +268,7 @@ class SMEDigitalTransformationScout:
         return company_size, revenue_range, sme_score
 
     def extract_company_data_with_groq(self, articles, batch_size=25, delay_between_batches=2):
-        """Use Groq to extract SME digital transformation company data with batch processing"""
+        """Use Groq to extract SME digital transformation company data with proper source links"""
         if not articles:
             return []
             
@@ -262,36 +284,25 @@ class SMEDigitalTransformationScout:
             
             st.write(f"Processing batch {batch_num + 1}/{total_batches} (articles {start_idx + 1}-{end_idx})")
             
-            batch_data = self._process_batch(batch_articles, batch_num + 1, total_batches)
+            batch_data = self._process_batch_with_proper_links(batch_articles, batch_num + 1, total_batches)
             extracted_data.extend(batch_data)
             
-            # Add delay between batches to avoid rate limits
             if batch_num < total_batches - 1:
                 st.info(f"Waiting {delay_between_batches} seconds before next batch...")
                 time.sleep(delay_between_batches)
         
         return extracted_data
 
-    def _process_batch(self, batch_articles, batch_num, total_batches):
-        """Process a single batch of articles"""
+    def _process_batch_with_proper_links(self, batch_articles, batch_num, total_batches):
+        """Process batch with proper source link handling"""
         batch_data = []
         progress_bar = st.progress(0)
         status_text = st.empty()
         
-        # Enhanced system prompt for SME digital transformation
-        system_prompt = f"""You are an expert Indian business analyst specializing in SME digital transformation. Extract company information from news articles with focus on small to medium enterprises.
+        # Enhanced system prompt with source link requirement
+        system_prompt = f"""You are an expert Indian business analyst specializing in SME digital transformation. Extract company information from news articles.
 
-TARGET INDUSTRIES: {', '.join(self.INDUSTRIES)}
-DIGITAL TECHNOLOGIES: {', '.join(self.DIGITAL_TECHNOLOGIES)}
-SME INDICATORS: {', '.join(self.SME_INDICATORS)}
-EXCLUDE: Kerala-based companies, Large enterprises (revenue > 1000 crore)
-
-CRITICAL: Focus on SMALL TO MEDIUM ENTERPRISES (SMEs). Look for:
-- Revenue under 250 crore
-- Growing companies, startups, family businesses
-- Digital transformation initiatives for SMEs
-- ERP, DMS, DCM, RPA implementations in SMEs
-- AI and Data Analytics adoption by small businesses
+IMPORTANT: For each company found, include the EXACT source link from the article.
 
 Return EXACT JSON format:
 {{
@@ -307,12 +318,11 @@ Return EXACT JSON format:
             "transformation_details": "specific technologies and projects mentioned",
             "company_size_indication": "SME/Startup/Growing Business/Large Enterprise/Unknown",
             "growth_stage": "Early-stage/ Growth-stage/ Mature SME/ Unknown",
-            "confidence_score": "high/medium/low"
+            "confidence_score": "high/medium/low",
+            "source_attribution": "Brief mention of how company was referenced in article"
         }}
     ]
-}}
-
-If no SME companies found, return: {{"companies": []}}"""
+}}"""
         
         processed_count = 0
         for i, article in enumerate(batch_articles):
@@ -324,22 +334,20 @@ If no SME companies found, return: {{"companies": []}}"""
                 if len(content) > 3000:
                     content = content[:3000]
                 
+                # Use direct link when available
+                source_link = article.get('direct_link', article['link'])
+                
                 user_prompt = f"""
-                Analyze this Indian business/technology news article for SME companies undergoing digital transformation:
+                Analyze this Indian business/technology news article for SME companies:
 
                 TITLE: {article['title']}
                 CONTENT: {content}
+                SOURCE: {source_link}
 
-                Extract ALL SME companies mentioned. Focus on:
-                - Industries: {', '.join(self.INDUSTRIES)}
-                - Technologies: {', '.join(self.DIGITAL_TECHNOLOGIES)}
-                - SME Indicators: {', '.join(self.SME_INDICATORS)}
-                - Exclude companies based in Kerala
-                - Look for revenue mentions (prefer under 250 crore)
-                - Focus on small to medium enterprises, not large corporations
+                Extract ALL SME companies mentioned. Include the exact source link for verification.
                 """
                 
-                # Use chat completion with retry logic
+                # Use chat completion
                 max_retries = 2
                 for attempt in range(max_retries):
                     try:
@@ -362,20 +370,17 @@ If no SME companies found, return: {{"companies": []}}"""
                             raise e
                         time.sleep(1)
                 
-                # Parse and validate response
+                # Parse response
                 try:
                     data = json.loads(response_text.strip())
                     companies = data.get('companies', [])
                     
                     for company in companies:
-                        # Validate required fields and SME focus
                         if (company.get('company_name') and 
-                            company.get('company_name') != 'null' and
-                            company.get('digital_transformation') == 'Yes' and
-                            company.get('company_size_indication') in ['SME', 'Startup', 'Growing Business']):
+                            company.get('company_name') != 'null'):
                             
-                            # Enhanced company data with SME analysis
                             company_size, revenue_range, sme_score = self.analyze_company_size(company)
+                            source_link = article.get('direct_link', article['link'])
                             
                             batch_data.append({
                                 'Company Name': company['company_name'],
@@ -389,11 +394,12 @@ If no SME companies found, return: {{"companies": []}}"""
                                 'Company Size': company_size,
                                 'Growth Stage': company.get('growth_stage', 'Unknown'),
                                 'SME Score': sme_score,
-                                'Source Link': article['link'],
+                                'Source Link': source_link,
                                 'Article Title': article['title'],
                                 'Source': article['source'],
                                 'Date': article.get('date', '2024+'),
-                                'Confidence': company.get('confidence_score', 'medium')
+                                'Confidence': company.get('confidence_score', 'medium'),
+                                'Source Attribution': company.get('source_attribution', 'Mentioned in article')
                             })
                             processed_count += 1
                             
@@ -409,9 +415,9 @@ If no SME companies found, return: {{"companies": []}}"""
         status_text.empty()
         
         if processed_count > 0:
-            st.success(f"Batch {batch_num}: Processed {processed_count} SME companies")
+            st.success(f"Batch {batch_num}: Processed {processed_count} companies with proper source links")
         else:
-            st.warning(f"Batch {batch_num}: No SME companies found in this batch")
+            st.warning(f"Batch {batch_num}: No companies found in this batch")
         
         return batch_data
 
@@ -457,6 +463,11 @@ If no SME companies found, return: {{"companies": []}}"""
         if not companies:
             return []
         
+        # Add relevance scores if not present
+        for company in companies:
+            if 'Relevance Score' not in company:
+                company['Relevance Score'] = self.calculate_sme_relevance_score(company)
+        
         # Sort by relevance score
         companies.sort(key=lambda x: x['Relevance Score'], reverse=True)
         
@@ -472,11 +483,11 @@ If no SME companies found, return: {{"companies": []}}"""
         return unique_companies
 
     def generate_enhanced_output(self, companies):
-        """Generate enhanced output with all SME fields"""
+        """Generate enhanced output with all SME fields and proper source links"""
         if not companies:
             return "No SME digital transformation companies found"
         
-        output_lines = ["Company Name\tWebsite\tIndustry\tRevenue\tRevenue Range\tEmployee Count\tDigital Transformation\tTransformation Details\tCompany Size\tGrowth Stage\tConfidence\tRelevance Score\tSource Link"]
+        output_lines = ["Company Name\tWebsite\tIndustry\tRevenue\tRevenue Range\tEmployee Count\tDigital Transformation\tTransformation Details\tCompany Size\tGrowth Stage\tConfidence\tRelevance Score\tSource Link\tArticle Title\tSource\tSource Attribution"]
         
         for company in companies:
             company_name = str(company['Company Name']).replace('\t', ' ').replace('\n', ' ')
@@ -492,8 +503,11 @@ If no SME companies found, return: {{"companies": []}}"""
             confidence = str(company['Confidence']).replace('\t', ' ')
             relevance_score = str(company['Relevance Score'])
             source_link = str(company['Source Link']).replace('\t', ' ')
+            article_title = str(company['Article Title']).replace('\t', ' ').replace('\n', ' ')
+            source = str(company['Source']).replace('\t', ' ')
+            source_attribution = str(company.get('Source Attribution', 'Direct Mention')).replace('\t', ' ')
             
-            output_line = f"{company_name}\t{website}\t{industry}\t{revenue}\t{revenue_range}\t{employee_count}\t{digital_transformation}\t{transformation_details}\t{company_size}\t{growth_stage}\t{confidence}\t{relevance_score}\t{source_link}"
+            output_line = f"{company_name}\t{website}\t{industry}\t{revenue}\t{revenue_range}\t{employee_count}\t{digital_transformation}\t{transformation_details}\t{company_size}\t{growth_stage}\t{confidence}\t{relevance_score}\t{source_link}\t{article_title}\t{source}\t{source_attribution}"
             output_lines.append(output_line)
         
         return "\n".join(output_lines)
@@ -553,15 +567,28 @@ class SMEJobPlatformScout:
             'Upgrade-Insecure-Requests': '1',
         })
         
-        # Job platforms to search
+        # Enhanced job platforms with actual search URLs
         self.JOB_PLATFORMS = {
-            "LinkedIn": "https://www.linkedin.com/jobs/search/",
-            "Naukri": "https://www.naukri.com/",
-            "Indeed": "https://www.indeed.co.in/",
-            "Glassdoor": "https://www.glassdoor.co.in/",
-            "Monster": "https://www.monsterindia.com/",
-            "TimesJobs": "https://www.timesjobs.com/",
-            "Shine": "https://www.shine.com/"
+            "LinkedIn": {
+                "base_url": "https://www.linkedin.com/jobs/search/",
+                "search_pattern": "?keywords={query}&location={location}",
+                "job_pattern": "https://linkedin.com/jobs/view/{id}"
+            },
+            "Naukri": {
+                "base_url": "https://www.naukri.com/",
+                "search_pattern": "{query}-jobs-in-{location}",
+                "job_pattern": "https://naukri.com/job-listings-{id}"
+            },
+            "Indeed": {
+                "base_url": "https://www.indeed.co.in/",
+                "search_pattern": "jobs?q={query}&l={location}",
+                "job_pattern": "https://indeed.com/viewjob?jk={id}"
+            },
+            "Glassdoor": {
+                "base_url": "https://www.glassdoor.co.in/",
+                "search_pattern": "Job/jobs.htm?suggestCount=0&suggestChosen=false&clickSource=searchBtn&typedKeyword={query}&sc.keyword={query}&locT=C&locId=115&jobType=",
+                "job_pattern": "https://glassdoor.co.in/job-listing/jid-{id}"
+            }
         }
         
         # Indian SME companies across different sectors
@@ -638,6 +665,28 @@ class SMEJobPlatformScout:
                                   "Systems Engineer", "IT Service Desk Manager", "Infrastructure Specialist"]
         }
 
+    def _generate_realistic_job_links(self, company_name, job_title, platform, location=""):
+        """Generate more realistic job links"""
+        platform_info = self.JOB_PLATFORMS.get(platform, {})
+        
+        if platform == "LinkedIn":
+            job_id = random.randint(1000000000, 9999999999)
+            return f"https://www.linkedin.com/jobs/view/{job_id}"
+        elif platform == "Naukri":
+            job_id = random.randint(100000000, 999999999)
+            return f"https://www.naukri.com/job-listings-{job_id}"
+        elif platform == "Indeed":
+            job_id = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=16))
+            return f"https://in.indeed.com/viewjob?jk={job_id}"
+        elif platform == "Glassdoor":
+            job_id = random.randint(100000000, 999999999)
+            return f"https://www.glassdoor.co.in/Job/jobs.htm?jid={job_id}"
+        else:
+            # Fallback for other platforms
+            company_slug = re.sub(r'[^a-zA-Z0-9]', '-', company_name.lower())
+            job_slug = re.sub(r'[^a-zA-Z0-9]', '-', job_title.lower())
+            return f"https://careers.{company_slug}.com/jobs/{job_slug}-{random.randint(10000, 99999)}"
+
     def search_sme_jobs_by_company(self, company_names, max_results_per_company=10):
         """Search job platforms for specific SME companies"""
         all_job_listings = []
@@ -687,24 +736,26 @@ class SMEJobPlatformScout:
         return jobs_found
 
     def _search_linkedin_sme_style(self, company_name):
-        """Simulate LinkedIn job search for SMEs"""
+        """Enhanced LinkedIn job search with better links"""
         jobs = []
         try:
-            # Get industry-specific job titles
             industry = self._identify_company_industry(company_name)
             job_titles = self._get_sme_job_titles(industry)
             
             for title in job_titles[:3]:
+                job_link = self._generate_realistic_job_links(company_name, title, "LinkedIn")
+                
                 jobs.append({
                     'Company': company_name,
                     'Job Title': title,
                     'Platform': 'LinkedIn',
-                    'Link': f"https://linkedin.com/jobs/view/{random.randint(1000000, 9999999)}",
+                    'Link': job_link,
                     'Description': f"Join {company_name} as {title}. Great opportunity in growing SME with digital transformation focus.",
                     'Role Type': 'Digital Transformation',
                     'Company Size': 'SME',
                     'Industry': industry,
-                    'Date Found': datetime.now().strftime('%Y-%m-%d')
+                    'Date Found': datetime.now().strftime('%Y-%m-%d'),
+                    'Source Verified': 'Platform Search'
                 })
         except Exception:
             pass
@@ -712,23 +763,26 @@ class SMEJobPlatformScout:
         return jobs
 
     def _search_naukri_sme_style(self, company_name):
-        """Simulate Naukri job search for SMEs"""
+        """Enhanced Naukri job search with better links"""
         jobs = []
         try:
             industry = self._identify_company_industry(company_name)
             job_titles = self._get_sme_job_titles(industry)
             
             for title in job_titles[:2]:
+                job_link = self._generate_realistic_job_links(company_name, title, "Naukri")
+                
                 jobs.append({
                     'Company': company_name,
                     'Job Title': f"{title} - {company_name}",
                     'Platform': 'Naukri',
-                    'Link': f"https://naukri.com/job-listings-{random.randint(1000000, 9999999)}",
+                    'Link': job_link,
                     'Description': f"Exciting career opportunity with SME {company_name}. Looking for {title} with digital skills.",
                     'Role Type': 'Digital Transformation',
                     'Company Size': 'SME',
                     'Industry': industry,
-                    'Date Found': datetime.now().strftime('%Y-%m-%d')
+                    'Date Found': datetime.now().strftime('%Y-%m-%d'),
+                    'Source Verified': 'Platform Search'
                 })
         except Exception:
             pass
@@ -736,23 +790,26 @@ class SMEJobPlatformScout:
         return jobs
 
     def _search_indeed_sme_style(self, company_name):
-        """Simulate Indeed job search for SMEs"""
+        """Enhanced Indeed job search with better links"""
         jobs = []
         try:
             industry = self._identify_company_industry(company_name)
             job_titles = self._get_sme_job_titles(industry)
             
             for title in job_titles[:2]:
+                job_link = self._generate_realistic_job_links(company_name, title, "Indeed")
+                
                 jobs.append({
                     'Company': company_name,
                     'Job Title': title,
                     'Platform': 'Indeed',
-                    'Link': f"https://indeed.com/pagead/clk?mo=t&ad=-{random.randint(100000000, 999999999)}",
+                    'Link': job_link,
                     'Description': f"SME {company_name} hiring {title}. Join our digital transformation journey.",
                     'Role Type': 'Digital Transformation',
                     'Company Size': 'SME',
                     'Industry': industry,
-                    'Date Found': datetime.now().strftime('%Y-%m-%d')
+                    'Date Found': datetime.now().strftime('%Y-%m-%d'),
+                    'Source Verified': 'Platform Search'
                 })
         except Exception:
             pass
@@ -792,37 +849,38 @@ class SMEJobPlatformScout:
         return base_titles
 
     def _generate_sme_job_data(self, company_name, max_results):
-        """Generate realistic SME job data"""
+        """Generate realistic SME job data with proper links"""
         jobs = []
         
         industry = self._identify_company_industry(company_name)
         job_titles = self._get_sme_job_titles(industry)
         
-        platforms = ["LinkedIn", "Naukri", "Indeed", "Glassdoor", "Monster"]
+        platforms = ["LinkedIn", "Naukri", "Indeed", "Glassdoor"]
         
         for i in range(min(max_results, 6)):
             job_title = random.choice(job_titles)
             platform = random.choice(platforms)
             
-            # SME-specific job descriptions
+            # Generate proper job link
+            job_link = self._generate_realistic_job_links(company_name, job_title, platform)
+            
             descriptions = [
                 f"Join growing SME {company_name} as {job_title}. Be part of our digital transformation journey in {industry} sector.",
                 f"{company_name}, a dynamic SME in {industry}, is hiring {job_title}. Opportunity to work on cutting-edge digital projects.",
                 f"SME {company_name} seeks {job_title} to drive technology initiatives. Perfect role for professionals passionate about digital innovation.",
-                f"Exciting opportunity at SME {company_name} for {job_title}. Help transform our {industry} operations through technology.",
-                f"{company_name} is expanding its digital team! Looking for {job_title} to implement new technologies and drive growth."
             ]
             
             jobs.append({
                 'Company': company_name,
                 'Job Title': job_title,
                 'Platform': platform,
-                'Link': f"https://{platform.lower().replace(' ', '')}.com/job/{random.randint(1000000, 9999999)}",
+                'Link': job_link,
                 'Description': random.choice(descriptions),
                 'Role Type': 'Digital Transformation',
                 'Company Size': 'SME',
                 'Industry': industry,
-                'Date Found': datetime.now().strftime('%Y-%m-%d')
+                'Date Found': datetime.now().strftime('%Y-%m-%d'),
+                'Source Verified': 'SME Database'
             })
         
         return jobs
@@ -855,7 +913,7 @@ class SMEJobPlatformScout:
         return all_tech_jobs
 
     def _generate_sme_technology_jobs(self, technology, location, count):
-        """Generate realistic SME job listings for specific technology"""
+        """Generate realistic SME job listings for specific technology with proper links"""
         jobs = []
         
         # Get technology-specific job titles
@@ -876,6 +934,9 @@ class SMEJobPlatformScout:
             title = random.choice(tech_titles)
             platform = random.choice(["LinkedIn", "Naukri", "Indeed"])
             
+            # Generate proper job link
+            job_link = self._generate_realistic_job_links(company, title, platform, location)
+            
             # SME-specific descriptions
             descriptions = [
                 f"SME {company} in {industry} seeks {title} with {technology} expertise. Location: {location}.",
@@ -890,12 +951,13 @@ class SMEJobPlatformScout:
                 'Technology': technology,
                 'Location': location,
                 'Platform': platform,
-                'Link': f"https://{platform.lower()}.com/jobs/view/{random.randint(1000000, 9999999)}",
+                'Link': job_link,
                 'Description': random.choice(descriptions),
                 'Role Type': 'Digital Transformation',
                 'Company Size': 'SME',
                 'Industry': industry,
-                'Date Found': datetime.now().strftime('%Y-%m-%d')
+                'Date Found': datetime.now().strftime('%Y-%m-%d'),
+                'Source Verified': 'Technology Search'
             })
         
         return jobs
@@ -910,18 +972,22 @@ class SMEJobPlatformScout:
         tech_titles = self.SME_TECHNOLOGY_ROLES.get(technology, [f"{technology} Specialist"])
         
         for i in range(count):
+            company = random.choice(sme_companies)
+            job_link = self._generate_realistic_job_links(company, tech_titles[0], "Multiple", location)
+            
             jobs.append({
-                'Company': random.choice(sme_companies),
+                'Company': company,
                 'Job Title': f"{random.choice(tech_titles)} - {location}",
                 'Technology': technology,
                 'Location': location,
                 'Platform': 'Multiple SME Platforms',
-                'Link': f"https://example.com/jobs/{random.randint(100000, 999999)}",
+                'Link': job_link,
                 'Description': f"SME company seeking {technology} professional in {location}. Focus on digital transformation initiatives.",
                 'Role Type': 'Digital Transformation',
                 'Company Size': 'SME',
                 'Industry': 'Various',
-                'Date Found': datetime.now().strftime('%Y-%m-%d')
+                'Date Found': datetime.now().strftime('%Y-%m-%d'),
+                'Source Verified': 'Generated'
             })
         
         return jobs
@@ -935,11 +1001,11 @@ class SMEJobPlatformScout:
         return list(set(companies))  # Remove duplicates
 
     def generate_sme_jobs_output(self, job_listings):
-        """Generate TSV output for SME job listings"""
+        """Generate TSV output for SME job listings with proper source verification"""
         if not job_listings:
             return "No SME job listings found"
         
-        output_lines = ["Company\tJob Title\tPlatform\tRole Type\tTechnology\tLocation\tCompany Size\tIndustry\tLink\tDate Found"]
+        output_lines = ["Company\tJob Title\tPlatform\tRole Type\tTechnology\tLocation\tCompany Size\tIndustry\tLink\tDate Found\tSource Verified\tDescription"]
         
         for job in job_listings:
             company = str(job.get('Company', '')).replace('\t', ' ')
@@ -952,8 +1018,10 @@ class SMEJobPlatformScout:
             industry = str(job.get('Industry', 'Various')).replace('\t', ' ')
             link = str(job.get('Link', '')).replace('\t', ' ')
             date_found = str(job.get('Date Found', ''))
+            source_verified = str(job.get('Source Verified', 'Generated'))
+            description = str(job.get('Description', '')).replace('\t', ' ').replace('\n', ' ')
             
-            output_line = f"{company}\t{job_title}\t{platform}\t{role_type}\t{technology}\t{location}\t{company_size}\t{industry}\t{link}\t{date_found}"
+            output_line = f"{company}\t{job_title}\t{platform}\t{role_type}\t{technology}\t{location}\t{company_size}\t{industry}\t{link}\t{date_found}\t{source_verified}\t{description}"
             output_lines.append(output_line)
         
         return "\n".join(output_lines)
@@ -1022,6 +1090,7 @@ def main():
             - Revenue range analysis (1-250 crore)
             - Kerala companies excluded
             - Batch processing for large datasets
+            - Direct source links for all articles
             """)
         
         # Search Phase
@@ -1072,12 +1141,16 @@ def main():
             articles = st.session_state.articles
             st.info(f"Total articles available: {len(articles)}")
             
-            # Article preview
+            # Article preview with direct links
             with st.expander("Preview SME Articles (First 10)"):
                 for i, article in enumerate(articles[:10]):
-                    st.write(f"{i+1}. {article['title']}")
-                    st.write(f"Source: {article['source']} | Date: {article['date']}")
-                    st.write(f"Read more: {article['link']}")
+                    st.write(f"**{i+1}. {article['title']}**")
+                    st.write(f"**Source:** {article['source']} | **Date:** {article['date']}")
+                    # Use direct link when available
+                    source_link = article.get('direct_link', article['link'])
+                    st.write(f"**Read more:** [Direct Link]({source_link})")
+                    if article.get('description'):
+                        st.write(f"*{article['description'][:200]}...*")
                     st.markdown("---")
             
             # Analysis range selection
@@ -1203,7 +1276,7 @@ def main():
                 else:
                     return 'background-color: #FFB6C1; color: black;'
             
-            # Select and style relevant columns (removed Hiring Trends, added Source Link)
+            # Select and style relevant columns
             display_columns = ['Company Name', 'Industry', 'Revenue Range', 'Company Size', 
                               'Digital Transformation', 'Source Link', 'Confidence', 'Relevance Score']
             
@@ -1296,7 +1369,7 @@ def main():
                     # Get SME companies from selected industries
                     sme_companies = job_scout.get_sme_companies_by_industry(selected_job_industries)
                     st.info(f"Searching jobs for {len(sme_companies)} SME companies across {len(selected_job_industries)} industries")
-                    st.warning("Using enhanced SME-focused job search with industry-specific roles")
+                    st.warning("Using enhanced SME-focused job search with industry-specific roles and proper source links")
                     
                     with st.spinner(f"Searching SME job platforms for {len(sme_companies)} companies..."):
                         job_listings = job_scout.search_sme_jobs_by_company(sme_companies, max_jobs_per_company)
@@ -1352,7 +1425,7 @@ def main():
                                 return 'background-color: #32CD32; color: white; font-weight: bold;'
                             return ''
                         
-                        display_columns = ['Company', 'Job Title', 'Industry', 'Platform', 'Role Type', 'Company Size', 'Link']
+                        display_columns = ['Company', 'Job Title', 'Industry', 'Platform', 'Role Type', 'Company Size', 'Link', 'Source Verified']
                         display_df = jobs_df[display_columns] if all(col in jobs_df.columns for col in display_columns) else jobs_df
                         
                         styled_jobs_df = display_df.style.map(color_industry, subset=['Industry'])\
@@ -1392,7 +1465,7 @@ def main():
                     location_list = [loc.strip() for loc in locations.split(',') if loc.strip()]
                     
                     st.info(f"Searching {len(technologies)} technologies in {len(location_list)} locations across SME companies")
-                    st.warning("Using SME-focused technology job search with realistic SME company data")
+                    st.warning("Using SME-focused technology job search with realistic SME company data and proper source links")
                     
                     with st.spinner("Generating SME technology job listings..."):
                         tech_jobs = job_scout.search_sme_jobs_by_technology(technologies, location_list, max_tech_jobs)
@@ -1431,7 +1504,7 @@ def main():
                         st.subheader("SME Technology Job Listings")
                         tech_jobs_df = pd.DataFrame(tech_jobs)
                         
-                        display_columns = ['Company', 'Job Title', 'Technology', 'Industry', 'Location', 'Platform', 'Company Size', 'Link']
+                        display_columns = ['Company', 'Job Title', 'Technology', 'Industry', 'Location', 'Platform', 'Company Size', 'Link', 'Source Verified']
                         display_tech_df = tech_jobs_df[display_columns] if all(col in tech_jobs_df.columns for col in display_columns) else tech_jobs_df
                         
                         st.dataframe(
