@@ -511,7 +511,7 @@ If no SME companies found, return: {{"companies": []}}"""
         """Enhance company data with job platform hiring information"""
         enhanced_companies = []
         
-        st.info Enhancing with job platform data...")
+        st.info ("Enhancing with job platform data...")
         progress_bar = st.progress(0)
         
         for i, company in enumerate(companies):
