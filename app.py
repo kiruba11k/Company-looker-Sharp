@@ -749,7 +749,7 @@ def main():
         selected_technologies = st.multiselect(
             "Focus Technologies:",
             scout.DIGITAL_TECHNOLOGIES,
-            default=["ERP", "AI", "RPA", "DMS", "Cloud Migration"]
+            default=[]
         )
         
         st.subheader("Search Settings")
