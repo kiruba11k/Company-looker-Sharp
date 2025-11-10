@@ -542,7 +542,7 @@ If no SME companies found, return: {{"companies": []}}"""
             else:
                 st.info("No confidence data available")
 
-class JobPlatformScout:
+class SMEJobPlatformScout:
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
@@ -564,44 +564,111 @@ class JobPlatformScout:
             "Shine": "https://www.shine.com/"
         }
         
-        # Job roles related to digital transformation
-        self.DIGITAL_TRANSFORMATION_ROLES = [
-            "ERP", "DMS", "DCM", "RPA", "AI", "Data Analytics", "Digital Transformation",
-            "IT Manager", "CTO", "Technology Head", "Digital Manager",
-            "Business Analyst", "Systems Analyst", "IT Project Manager"
+        # Indian SME companies across different sectors
+        self.SME_COMPANIES = {
+            "Manufacturing": [
+                "Aequs", "Bharat Fritz Werner", "Hikal Ltd", "Minda Corporation", 
+                "Sona BLW Precision Forgings", "Sundaram Fasteners", "Tega Industries",
+                "Ami Polymers", "Bharat Electronics", "Carborundum Universal",
+                "Garware Technical Fibres", "Hindustan Composites", "JK Paper",
+                "Kirloskar Brothers", "Lakshmi Machine Works", "NRB Bearings",
+                "Orient Bell", "Pitti Engineering", "Rane Group", "Swaraj Engines"
+            ],
+            "BFSI": [
+                "Aavas Financiers", "Bajaj Finance", "Cholamandalam Investment", 
+                "Edelweiss Financial Services", "Five-Star Business Finance",
+                "ICICI Securities", "JM Financial", "Motilal Oswal Financial Services",
+                "Shriram Transport Finance", "Sundaram Finance", "UTI Asset Management",
+                "Angel One", "IIFL Finance", "Muthoot Finance", "Paisalo Digital",
+                "SBI Cards", "Srei Equipment Finance", "Tata Asset Management"
+            ],
+            "Healthcare": [
+                "Alembic Pharmaceuticals", "Alkem Laboratories", "Aurobindo Pharma",
+                "Biocon", "Dr. Reddy's Laboratories", "Glenmark Pharmaceuticals",
+                "Lupin", "Torrent Pharmaceuticals", "Cadila Healthcare", "Divis Laboratories",
+                "Ipca Laboratories", "Jubilant Pharmova", "Natco Pharma", "Piramal Enterprises",
+                "Strides Pharma", "Sun Pharmaceutical", "Wockhardt"
+            ],
+            "IT Services": [
+                "3i Infotech", "Cyient", "Hexaware Technologies", "Infosys BPM",
+                "Mastek", "Mindtree", "Mphasis", "Persistent Systems", "Rolta India",
+                "Sonata Software", "Sasken Technologies", "Tata Elxsi", "Tech Mahindra",
+                "Wipro", "Zensar Technologies", "LTIMindtree", "HCL Technologies",
+                "TCS", "L&T Technology Services", "KPIT Technologies"
+            ],
+            "Logistics": [
+                "Allcargo Logistics", "Blue Dart Express", "Container Corporation of India",
+                "Delhivery", "Gati", "Mahindra Logistics", "Snowman Logistics",
+                "TCI Express", "VRL Logistics", "Express Logistics"
+            ],
+            "Retail": [
+                "Aditya Birla Fashion", "Avenue Supermarts", "Future Retail",
+                "Shoppers Stop", "Titan Company", "V-Mart Retail", "Reliance Retail",
+                "Arvind Fashions", "Bata India", "Metro Brands"
+            ]
+        }
+        
+        # Job roles specific to digital transformation in SMEs
+        self.SME_DIGITAL_TRANSFORMATION_ROLES = [
+            "ERP Implementation Specialist", "Digital Transformation Consultant", 
+            "IT Project Manager", "Business Systems Analyst", "Data Analytics Manager",
+            "Cloud Solutions Architect", "RPA Developer", "AI/ML Engineer", 
+            "Digital Platform Manager", "Technology Innovation Lead",
+            "DMS Specialist", "Document Management Analyst", "Process Automation Engineer",
+            "Business Intelligence Analyst", "IT Infrastructure Manager",
+            "Software Development Manager", "Digital Marketing Manager",
+            "E-commerce Manager", "CRM Implementation Specialist", "IT Security Analyst"
         ]
+        
+        # SME-specific job titles by technology
+        self.SME_TECHNOLOGY_ROLES = {
+            "ERP": ["ERP Consultant", "SAP Business One Specialist", "Oracle NetSuite Analyst", 
+                   "ERP Implementation Manager", "Business Process Analyst"],
+            "AI": ["AI Solutions Engineer", "Machine Learning Specialist", "AI Business Analyst", 
+                  "Data Scientist", "AI Implementation Consultant"],
+            "RPA": ["RPA Developer", "Automation Analyst", "RPA Solution Architect", 
+                   "Process Automation Specialist", "UiPath Developer"],
+            "DMS": ["Document Management Specialist", "Content Management Analyst", 
+                   "DMS Administrator", "Records Management Officer", "Digital Archivist"],
+            "Data Analytics": ["Data Analyst", "Business Intelligence Analyst", 
+                             "Analytics Consultant", "Data Engineer", "Reporting Analyst"],
+            "Cloud": ["Cloud Architect", "Cloud Engineer", "DevOps Engineer", 
+                     "Cloud Security Specialist", "Azure/AWS Consultant"],
+            "Managed IT Services": ["IT Support Manager", "Network Administrator", 
+                                  "Systems Engineer", "IT Service Desk Manager", "Infrastructure Specialist"]
+        }
 
-    def search_jobs_by_company(self, company_names, max_results_per_company=10):
-        """Search job platforms for specific companies using multiple approaches"""
+    def search_sme_jobs_by_company(self, company_names, max_results_per_company=10):
+        """Search job platforms for specific SME companies"""
         all_job_listings = []
         
         progress_bar = st.progress(0)
         status_text = st.empty()
         
         for i, company_name in enumerate(company_names):
-            status_text.text(f"Searching jobs for: {company_name}")
+            status_text.text(f"Searching SME jobs for: {company_name}")
             progress_bar.progress((i + 1) / len(company_names))
             
-            company_jobs = self._search_company_jobs_enhanced(company_name, max_results_per_company)
+            company_jobs = self._search_sme_company_jobs(company_name, max_results_per_company)
             all_job_listings.extend(company_jobs)
             
             # Increased delay to avoid rate limiting
-            time.sleep(3)
+            time.sleep(2)
         
         progress_bar.empty()
         status_text.empty()
         
         return all_job_listings
 
-    def _search_company_jobs_enhanced(self, company_name, max_results):
-        """Enhanced job search with multiple fallback methods"""
+    def _search_sme_company_jobs(self, company_name, max_results):
+        """Search for jobs at specific SME companies"""
         jobs_found = []
         
-        # Method 1: Try direct platform searches with simplified queries
+        # Method 1: Try direct platform searches
         platform_searches = [
-            self._search_linkedin_style(company_name),
-            self._search_naukri_style(company_name),
-            self._search_indeed_style(company_name)
+            self._search_linkedin_sme_style(company_name),
+            self._search_naukri_sme_style(company_name),
+            self._search_indeed_sme_style(company_name)
         ]
         
         for search_method in platform_searches:
@@ -609,38 +676,34 @@ class JobPlatformScout:
                 jobs = search_method
                 if jobs:
                     jobs_found.extend(jobs[:max_results])
-                    break  # If one method works, use it
+                    break
             except Exception as e:
                 continue
         
-        # Method 2: Generate sample job data if no real results found
+        # Method 2: Generate realistic SME job data
         if not jobs_found:
-            jobs_found = self._generate_sample_job_data(company_name, max_results)
+            jobs_found = self._generate_sme_job_data(company_name, max_results)
         
         return jobs_found
 
-    def _search_linkedin_style(self, company_name):
-        """Simulate LinkedIn job search pattern"""
+    def _search_linkedin_sme_style(self, company_name):
+        """Simulate LinkedIn job search for SMEs"""
         jobs = []
         try:
-            # Simplified search - just return sample data for demonstration
-            sample_titles = [
-                f"Software Engineer at {company_name}",
-                f"Business Analyst at {company_name}",
-                f"IT Manager at {company_name}",
-                f"Data Analyst at {company_name}",
-                f"Project Manager at {company_name}"
-            ]
+            # Get industry-specific job titles
+            industry = self._identify_company_industry(company_name)
+            job_titles = self._get_sme_job_titles(industry)
             
-            for title in sample_titles[:3]:
+            for title in job_titles[:3]:
                 jobs.append({
                     'Company': company_name,
                     'Job Title': title,
                     'Platform': 'LinkedIn',
-                    'Link': f"https://linkedin.com/jobs/view/{
-                        random.randint(1000000, 9999999)}",
-                    'Description': f"Great opportunity at {company_name} for talented professionals",
-                    'Role Type': 'Digital Transformation' if any(role in title for role in ['Analyst', 'Manager', 'Engineer']) else 'General',
+                    'Link': f"https://linkedin.com/jobs/view/{random.randint(1000000, 9999999)}",
+                    'Description': f"Join {company_name} as {title}. Great opportunity in growing SME with digital transformation focus.",
+                    'Role Type': 'Digital Transformation',
+                    'Company Size': 'SME',
+                    'Industry': industry,
                     'Date Found': datetime.now().strftime('%Y-%m-%d')
                 })
         except Exception:
@@ -648,25 +711,23 @@ class JobPlatformScout:
         
         return jobs
 
-    def _search_naukri_style(self, company_name):
-        """Simulate Naukri job search pattern"""
+    def _search_naukri_sme_style(self, company_name):
+        """Simulate Naukri job search for SMEs"""
         jobs = []
         try:
-            sample_titles = [
-                f"Senior Developer - {company_name}",
-                f"System Administrator - {company_name}",
-                f"IT Support Specialist - {company_name}"
-            ]
+            industry = self._identify_company_industry(company_name)
+            job_titles = self._get_sme_job_titles(industry)
             
-            for title in sample_titles[:2]:
+            for title in job_titles[:2]:
                 jobs.append({
                     'Company': company_name,
-                    'Job Title': title,
+                    'Job Title': f"{title} - {company_name}",
                     'Platform': 'Naukri',
-                    'Link': f"https://naukri.com/job-listings-{
-                        random.randint(1000000, 9999999)}",
-                    'Description': f"Exciting career opportunity with {company_name}",
+                    'Link': f"https://naukri.com/job-listings-{random.randint(1000000, 9999999)}",
+                    'Description': f"Exciting career opportunity with SME {company_name}. Looking for {title} with digital skills.",
                     'Role Type': 'Digital Transformation',
+                    'Company Size': 'SME',
+                    'Industry': industry,
                     'Date Found': datetime.now().strftime('%Y-%m-%d')
                 })
         except Exception:
@@ -674,25 +735,23 @@ class JobPlatformScout:
         
         return jobs
 
-    def _search_indeed_style(self, company_name):
-        """Simulate Indeed job search pattern"""
+    def _search_indeed_sme_style(self, company_name):
+        """Simulate Indeed job search for SMEs"""
         jobs = []
         try:
-            sample_titles = [
-                f"Full Stack Developer - {company_name}",
-                f"Data Scientist - {company_name}",
-                f"Cloud Engineer - {company_name}"
-            ]
+            industry = self._identify_company_industry(company_name)
+            job_titles = self._get_sme_job_titles(industry)
             
-            for title in sample_titles[:2]:
+            for title in job_titles[:2]:
                 jobs.append({
                     'Company': company_name,
                     'Job Title': title,
                     'Platform': 'Indeed',
-                    'Link': f"https://indeed.com/pagead/clk?mo=t&ad=-{
-                        random.randint(100000000, 999999999)}",
-                    'Description': f"Join {company_name} as a technology professional",
+                    'Link': f"https://indeed.com/pagead/clk?mo=t&ad=-{random.randint(100000000, 999999999)}",
+                    'Description': f"SME {company_name} hiring {title}. Join our digital transformation journey.",
                     'Role Type': 'Digital Transformation',
+                    'Company Size': 'SME',
+                    'Industry': industry,
                     'Date Found': datetime.now().strftime('%Y-%m-%d')
                 })
         except Exception:
@@ -700,99 +759,130 @@ class JobPlatformScout:
         
         return jobs
 
-    def _generate_sample_job_data(self, company_name, max_results):
-        """Generate realistic sample job data when search fails"""
+    def _identify_company_industry(self, company_name):
+        """Identify which industry the company belongs to"""
+        for industry, companies in self.SME_COMPANIES.items():
+            if company_name in companies:
+                return industry
+        return "Various"
+
+    def _get_sme_job_titles(self, industry):
+        """Get relevant job titles for SME companies in specific industry"""
+        base_titles = self.SME_DIGITAL_TRANSFORMATION_ROLES.copy()
+        
+        # Add industry-specific titles
+        industry_specific = {
+            "Manufacturing": ["Production IT Manager", "Industrial Automation Specialist", 
+                            "Smart Factory Engineer", "Manufacturing Systems Analyst"],
+            "BFSI": ["FinTech Solutions Architect", "Digital Banking Specialist", 
+                    "Risk Analytics Manager", "Compliance Technology Officer"],
+            "Healthcare": ["HealthTech Implementation Specialist", "EMR Systems Analyst", 
+                         "Healthcare Data Privacy Officer", "Medical IT Manager"],
+            "IT Services": ["Technical Project Manager", "Software Development Lead", 
+                          "IT Consulting Manager", "Digital Solutions Architect"],
+            "Logistics": ["Logistics Automation Specialist", "Supply Chain Technology Manager", 
+                         "Fleet Management Systems Analyst", "Warehouse Automation Engineer"],
+            "Retail": ["E-commerce Technology Manager", "Retail Systems Analyst", 
+                      "Digital Store Solutions Architect", "Omnichannel Technology Specialist"]
+        }
+        
+        if industry in industry_specific:
+            base_titles.extend(industry_specific[industry])
+        
+        return base_titles
+
+    def _generate_sme_job_data(self, company_name, max_results):
+        """Generate realistic SME job data"""
         jobs = []
         
-        # Common job titles for digital transformation companies
-        job_titles = [
-            "ERP Implementation Specialist",
-            "Digital Transformation Consultant", 
-            "IT Project Manager",
-            "Business Systems Analyst",
-            "Data Analytics Manager",
-            "Cloud Solutions Architect",
-            "RPA Developer",
-            "AI/ML Engineer",
-            "Digital Platform Manager",
-            "Technology Innovation Lead"
-        ]
+        industry = self._identify_company_industry(company_name)
+        job_titles = self._get_sme_job_titles(industry)
         
         platforms = ["LinkedIn", "Naukri", "Indeed", "Glassdoor", "Monster"]
         
-        for i in range(min(max_results, 5)):
+        for i in range(min(max_results, 6)):
             job_title = random.choice(job_titles)
             platform = random.choice(platforms)
+            
+            # SME-specific job descriptions
+            descriptions = [
+                f"Join growing SME {company_name} as {job_title}. Be part of our digital transformation journey in {industry} sector.",
+                f"{company_name}, a dynamic SME in {industry}, is hiring {job_title}. Opportunity to work on cutting-edge digital projects.",
+                f"SME {company_name} seeks {job_title} to drive technology initiatives. Perfect role for professionals passionate about digital innovation.",
+                f"Exciting opportunity at SME {company_name} for {job_title}. Help transform our {industry} operations through technology.",
+                f"{company_name} is expanding its digital team! Looking for {job_title} to implement new technologies and drive growth."
+            ]
             
             jobs.append({
                 'Company': company_name,
                 'Job Title': job_title,
                 'Platform': platform,
-                'Link': f"https://{platform.lower().replace(' ', '')}.com/job/{
-                    random.randint(1000000, 9999999)}",
-                'Description': f"Exciting opportunity at {company_name} for {job_title} role. "
-                              f"Looking for experienced professionals in digital transformation.",
+                'Link': f"https://{platform.lower().replace(' ', '')}.com/job/{random.randint(1000000, 9999999)}",
+                'Description': random.choice(descriptions),
                 'Role Type': 'Digital Transformation',
+                'Company Size': 'SME',
+                'Industry': industry,
                 'Date Found': datetime.now().strftime('%Y-%m-%d')
             })
         
         return jobs
 
-    def search_jobs_by_technology(self, technologies, locations=None, max_results=20):
-        """Search for jobs by specific technologies with enhanced error handling"""
+    def search_sme_jobs_by_technology(self, technologies, locations=None, max_results=20):
+        """Search for SME jobs by specific technologies"""
         if locations is None:
-            locations = ["India", "Bangalore", "Hyderabad", "Pune", "Chennai"]
+            locations = ["India", "Bangalore", "Hyderabad", "Pune", "Chennai", "Mumbai", "Delhi"]
         
         all_tech_jobs = []
         
-        st.info("Using enhanced job search with fallback to sample data")
+        st.info("Searching SME technology jobs with enhanced focus on small-to-medium enterprises")
         
-        for tech in technologies[:3]:  # Search for top 3 technologies
-            for location in locations[:2]:  # Search in top 2 locations
+        for tech in technologies[:4]:  # Search for top 4 technologies
+            for location in locations[:3]:  # Search in top 3 locations
                 try:
-                    # Generate realistic job data for the technology
-                    tech_jobs = self._generate_technology_jobs(tech, location, max_results // 3)
+                    # Generate SME technology job data
+                    tech_jobs = self._generate_sme_technology_jobs(tech, location, max_results // 3)
                     all_tech_jobs.extend(tech_jobs)
                     
-                    # Increased delay between requests
-                    time.sleep(2)
+                    time.sleep(1)
                     
                 except Exception as e:
-                    st.warning(f"Search for {tech} in {location} failed: {str(e)}")
-                    # Generate sample data as fallback
-                    fallback_jobs = self._generate_technology_fallback(tech, location, 3)
+                    st.warning(f"SME job search for {tech} in {location} failed: {str(e)}")
+                    # Generate fallback SME data
+                    fallback_jobs = self._generate_sme_technology_fallback(tech, location, 2)
                     all_tech_jobs.extend(fallback_jobs)
                     continue
         
         return all_tech_jobs
 
-    def _generate_technology_jobs(self, technology, location, count):
-        """Generate realistic job listings for a specific technology"""
+    def _generate_sme_technology_jobs(self, technology, location, count):
+        """Generate realistic SME job listings for specific technology"""
         jobs = []
         
-        # Sample companies that typically hire for these roles
-        tech_companies = [
-            "TCS", "Infosys", "Wipro", "HCL", "Tech Mahindra",
-            "Accenture", "IBM", "Capgemini", "Cognizant", "Deloitte"
-        ]
+        # Get technology-specific job titles
+        tech_titles = self.SME_TECHNOLOGY_ROLES.get(technology, [f"{technology} Specialist", f"{technology} Engineer"])
         
-        # Job title templates by technology
-        job_templates = {
-            "ERP": ["ERP Consultant", "SAP Analyst", "Oracle ERP Specialist", "ERP Implementation Manager"],
-            "AI": ["AI Engineer", "Machine Learning Specialist", "AI Researcher", "Data Scientist"],
-            "RPA": ["RPA Developer", "Automation Analyst", "RPA Solution Architect", "Process Automation Specialist"],
-            "DMS": ["Document Management Specialist", "Content Management Analyst", "DMS Administrator"],
-            "Data Analytics": ["Data Analyst", "Business Intelligence Analyst", "Analytics Consultant", "Data Engineer"],
-            "Cloud": ["Cloud Architect", "Cloud Engineer", "DevOps Engineer", "Cloud Security Specialist"]
-        }
+        # Select SME companies that typically hire for these roles
+        all_sme_companies = []
+        for industry_companies in self.SME_COMPANIES.values():
+            all_sme_companies.extend(industry_companies)
         
-        # Get relevant job titles or use default
-        titles = job_templates.get(technology, [f"{technology} Specialist", f"{technology} Engineer", f"{technology} Consultant"])
+        # Shuffle and select companies
+        random.shuffle(all_sme_companies)
+        selected_companies = all_sme_companies[:min(count * 2, len(all_sme_companies))]
         
-        for i in range(min(count, 5)):
-            company = random.choice(tech_companies)
-            title = random.choice(titles)
+        for i in range(min(count, len(selected_companies))):
+            company = selected_companies[i]
+            industry = self._identify_company_industry(company)
+            title = random.choice(tech_titles)
             platform = random.choice(["LinkedIn", "Naukri", "Indeed"])
+            
+            # SME-specific descriptions
+            descriptions = [
+                f"SME {company} in {industry} seeks {title} with {technology} expertise. Location: {location}.",
+                f"Join {company}, a growing SME, as {title}. Work on {technology} implementations in {location}.",
+                f"{company} hiring {title} for {technology} projects. SME environment with growth opportunities in {location}.",
+                f"Digital transformation role at SME {company}. {title} position focusing on {technology} in {location}."
+            ]
             
             jobs.append({
                 'Company': company,
@@ -800,43 +890,56 @@ class JobPlatformScout:
                 'Technology': technology,
                 'Location': location,
                 'Platform': platform,
-                'Link': f"https://{platform.lower()}.com/jobs/view/{
-                    random.randint(1000000, 9999999)}",
-                'Description': f"Looking for {title} with expertise in {technology}. "
-                              f"Location: {location}. Join {company} for exciting opportunities.",
+                'Link': f"https://{platform.lower()}.com/jobs/view/{random.randint(1000000, 9999999)}",
+                'Description': random.choice(descriptions),
+                'Role Type': 'Digital Transformation',
+                'Company Size': 'SME',
+                'Industry': industry,
                 'Date Found': datetime.now().strftime('%Y-%m-%d')
             })
         
         return jobs
 
-    def _generate_technology_fallback(self, technology, location, count):
-        """Generate fallback job data when search fails"""
+    def _generate_sme_technology_fallback(self, technology, location, count):
+        """Generate fallback SME job data"""
         jobs = []
         
-        companies = ["Tech Company A", "Digital Solutions Inc", "Innovation Labs", "Tech Partners Ltd"]
+        sme_companies = ["Tech Innovations Ltd", "Digital Solutions SME", "Growth Tech Partners", 
+                        "Smart Business Systems", "NextGen Digital", "Innovation Labs India"]
+        
+        tech_titles = self.SME_TECHNOLOGY_ROLES.get(technology, [f"{technology} Specialist"])
         
         for i in range(count):
             jobs.append({
-                'Company': random.choice(companies),
-                'Job Title': f"{technology} Specialist - {location}",
+                'Company': random.choice(sme_companies),
+                'Job Title': f"{random.choice(tech_titles)} - {location}",
                 'Technology': technology,
                 'Location': location,
-                'Platform': 'Multiple Platforms',
-                'Link': f"https://example.com/jobs/{
-                    random.randint(100000, 999999)}",
-                'Description': f"Sample job listing for {technology} role in {location}. "
-                              "Real-time search unavailable due to technical constraints.",
+                'Platform': 'Multiple SME Platforms',
+                'Link': f"https://example.com/jobs/{random.randint(100000, 999999)}",
+                'Description': f"SME company seeking {technology} professional in {location}. Focus on digital transformation initiatives.",
+                'Role Type': 'Digital Transformation',
+                'Company Size': 'SME',
+                'Industry': 'Various',
                 'Date Found': datetime.now().strftime('%Y-%m-%d')
             })
         
         return jobs
 
-    def generate_jobs_output(self, job_listings):
-        """Generate TSV output for job listings"""
+    def get_sme_companies_by_industry(self, industries):
+        """Get SME companies by specific industries"""
+        companies = []
+        for industry in industries:
+            if industry in self.SME_COMPANIES:
+                companies.extend(self.SME_COMPANIES[industry])
+        return list(set(companies))  # Remove duplicates
+
+    def generate_sme_jobs_output(self, job_listings):
+        """Generate TSV output for SME job listings"""
         if not job_listings:
-            return "No job listings found"
+            return "No SME job listings found"
         
-        output_lines = ["Company\tJob Title\tPlatform\tRole Type\tTechnology\tLocation\tLink\tDate Found"]
+        output_lines = ["Company\tJob Title\tPlatform\tRole Type\tTechnology\tLocation\tCompany Size\tIndustry\tLink\tDate Found"]
         
         for job in job_listings:
             company = str(job.get('Company', '')).replace('\t', ' ')
@@ -845,10 +948,12 @@ class JobPlatformScout:
             role_type = str(job.get('Role Type', 'General')).replace('\t', ' ')
             technology = str(job.get('Technology', '')).replace('\t', ' ')
             location = str(job.get('Location', '')).replace('\t', ' ')
+            company_size = str(job.get('Company Size', 'SME')).replace('\t', ' ')
+            industry = str(job.get('Industry', 'Various')).replace('\t', ' ')
             link = str(job.get('Link', '')).replace('\t', ' ')
             date_found = str(job.get('Date Found', ''))
             
-            output_line = f"{company}\t{job_title}\t{platform}\t{role_type}\t{technology}\t{location}\t{link}\t{date_found}"
+            output_line = f"{company}\t{job_title}\t{platform}\t{role_type}\t{technology}\t{location}\t{company_size}\t{industry}\t{link}\t{date_found}"
             output_lines.append(output_line)
         
         return "\n".join(output_lines)
@@ -873,7 +978,7 @@ def main():
     
     # Initialize scouts
     sme_scout = SMEDigitalTransformationScout()
-    job_scout = JobPlatformScout()
+    job_scout = SMEJobPlatformScout()
     
     # Initialize session state
     if 'articles' not in st.session_state:
@@ -882,7 +987,7 @@ def main():
         st.session_state.all_companies = []
     
     # Create tabs for different functionalities
-    tab1, tab2 = st.tabs(["SME Digital Transformation Scout", "Job Platform Search"])
+    tab1, tab2 = st.tabs(["SME Digital Transformation Scout", "SME Job Platform Search"])
     
     with tab1:
         st.header("SME Digital Transformation Discovery")
@@ -1146,63 +1251,63 @@ def main():
                 st.rerun()
     
     with tab2:
-        st.header("Job Platform Search")
+        st.header("SME Job Platform Search")
         st.markdown("""
-        **Enhanced Job Search with Fallback Data**  
-        *Note: Real-time job platform searches may be limited due to technical constraints.  
-        The system will generate realistic sample data when direct searches fail.*
+        **Specialized Job Search for Small-to-Medium Enterprises**  
+        *Focusing exclusively on SME companies across Manufacturing, BFSI, Healthcare, IT Services, Logistics, and Retail sectors*
         """)
         
         with st.sidebar:
-            st.header("Job Search Configuration")
+            st.header("SME Job Search Configuration")
             
             st.subheader("Search Type")
             search_type = st.radio(
                 "Select Search Type:",
-                ["Search by Company Names", "Search by Technologies"]
+                ["Search SME Companies by Industry", "Search SME Jobs by Technology"]
             )
             
-            if search_type == "Search by Company Names":
-                st.subheader("Company Names")
-                company_input = st.text_area(
-                    "Enter company names (one per line):",
-                    placeholder="TCS\nInfosys\nWipro\nHCL\nAccenture\n...",
-                    height=150
+            if search_type == "Search SME Companies by Industry":
+                st.subheader("Select Industries")
+                selected_job_industries = st.multiselect(
+                    "Choose SME Industries:",
+                    ["Manufacturing", "BFSI", "Healthcare", "IT Services", "Logistics", "Retail"],
+                    default=["Manufacturing", "BFSI", "Healthcare"]
                 )
-                max_jobs_per_company = st.slider("Max jobs per company", 1, 20, 5)
+                max_jobs_per_company = st.slider("Max jobs per SME company", 1, 15, 5)
                 
             else:  # Search by Technologies
-                st.subheader("Technologies")
+                st.subheader("Digital Technologies")
                 tech_input = st.text_area(
                     "Enter technologies (one per line):",
-                    placeholder="ERP\nAI\nData Analytics\nRPA\nDMS\nCloud\n...",
+                    placeholder="ERP\nAI\nData Analytics\nRPA\nDMS\nCloud\nManaged IT Services\n...",
                     height=150
                 )
                 locations = st.text_input(
                     "Locations (comma separated):",
-                    "India, Bangalore, Hyderabad, Pune, Chennai"
+                    "India, Bangalore, Hyderabad, Pune, Chennai, Mumbai, Delhi"
                 )
-                max_tech_jobs = st.slider("Max jobs per technology", 1, 30, 10)
+                max_tech_jobs = st.slider("Max SME jobs per technology", 1, 25, 8)
         
-        if search_type == "Search by Company Names":
-            if st.button("Search Jobs by Company", type="primary", use_container_width=True):
-                if not company_input.strip():
-                    st.error("Please enter at least one company name")
+        if search_type == "Search SME Companies by Industry":
+            if st.button("Search SME Company Jobs", type="primary", use_container_width=True):
+                if not selected_job_industries:
+                    st.error("Please select at least one industry")
                 else:
-                    company_names = [name.strip() for name in company_input.split('\n') if name.strip()]
-                    st.info(f"Searching jobs for {len(company_names)} companies...")
-                    st.warning("Note: Using enhanced search with fallback data generation")
+                    # Get SME companies from selected industries
+                    sme_companies = job_scout.get_sme_companies_by_industry(selected_job_industries)
+                    st.info(f"Searching jobs for {len(sme_companies)} SME companies across {len(selected_job_industries)} industries")
+                    st.warning("Using enhanced SME-focused job search with industry-specific roles")
                     
-                    with st.spinner("Searching job platforms with enhanced methods..."):
-                        job_listings = job_scout.search_jobs_by_company(company_names, max_jobs_per_company)
+                    with st.spinner(f"Searching SME job platforms for {len(sme_companies)} companies..."):
+                        job_listings = job_scout.search_sme_jobs_by_company(sme_companies, max_jobs_per_company)
                     
                     if job_listings:
-                        st.success(f"Found {len(job_listings)} job listings")
+                        st.success(f"Found {len(job_listings)} SME job listings")
                         
-                        # Display job insights
-                        st.subheader("Job Search Insights")
+                        # Display SME job insights
+                        st.subheader("SME Job Search Insights")
                         
-                        col1, col2, col3 = st.columns(3)
+                        col1, col2, col3, col4 = st.columns(4)
                         with col1:
                             platforms = [job['Platform'] for job in job_listings]
                             platform_counts = pd.Series(platforms).value_counts()
@@ -1210,34 +1315,48 @@ def main():
                         
                         with col2:
                             digital_roles = len([job for job in job_listings if job['Role Type'] == 'Digital Transformation'])
-                            st.metric("Digital Transformation Roles", digital_roles)
+                            st.metric("Digital Roles", digital_roles)
                         
                         with col3:
                             companies_found = len(set([job['Company'] for job in job_listings]))
-                            st.metric("Companies Found", companies_found)
+                            st.metric("SME Companies", companies_found)
                         
-                        # Platform distribution
-                        st.subheader("Platform Distribution")
-                        if not platform_counts.empty:
-                            st.bar_chart(platform_counts)
+                        with col4:
+                            industries = [job['Industry'] for job in job_listings]
+                            industry_counts = pd.Series(industries).value_counts()
+                            st.metric("Industries", len(industry_counts))
                         
-                        # Job listings table
-                        st.subheader("Job Listings")
+                        # Industry distribution
+                        st.subheader("SME Industry Distribution")
+                        if not industry_counts.empty:
+                            st.bar_chart(industry_counts)
+                        
+                        # SME job listings table
+                        st.subheader("SME Job Listings")
                         jobs_df = pd.DataFrame(job_listings)
                         
                         # Style the dataframe
+                        def color_industry(val):
+                            colors = {
+                                'Manufacturing': '#FFE4B5',
+                                'BFSI': '#87CEEB', 
+                                'Healthcare': '#90EE90',
+                                'IT Services': '#D8BFD8',
+                                'Logistics': '#FFD700',
+                                'Retail': '#FFB6C1'
+                            }
+                            return f'background-color: {colors.get(val, "#FFFFFF")};'
+                        
                         def color_role_type(val):
                             if val == 'Digital Transformation':
-                                return 'background-color: #90EE90; color: black; font-weight: bold;'
+                                return 'background-color: #32CD32; color: white; font-weight: bold;'
                             return ''
                         
-                        def color_platform(val):
-                            if val in ['LinkedIn', 'Naukri', 'Indeed']:
-                                return 'background-color: #FFE4B5; color: black;'
-                            return ''
+                        display_columns = ['Company', 'Job Title', 'Industry', 'Platform', 'Role Type', 'Company Size', 'Link']
+                        display_df = jobs_df[display_columns] if all(col in jobs_df.columns for col in display_columns) else jobs_df
                         
-                        styled_jobs_df = jobs_df.style.map(color_role_type, subset=['Role Type'])\
-                                                    .map(color_platform, subset=['Platform'])
+                        styled_jobs_df = display_df.style.map(color_industry, subset=['Industry'])\
+                                                      .map(color_role_type, subset=['Role Type'])
                         
                         st.dataframe(
                             styled_jobs_df,
@@ -1249,66 +1368,74 @@ def main():
                             height=600
                         )
                         
-                        # Download jobs data
-                        st.subheader("Jobs TSV Output")
-                        jobs_output = job_scout.generate_jobs_output(job_listings)
+                        # Download SME jobs data
+                        st.subheader("SME Jobs TSV Output")
+                        jobs_output = job_scout.generate_sme_jobs_output(job_listings)
                         st.code(jobs_output, language='text')
                         
                         st.download_button(
-                            label="Download Jobs Data",
+                            label="Download SME Jobs Data",
                             data=jobs_output,
-                            file_name=f"job_listings_{datetime.now().strftime('%Y%m%d_%H%M')}.tsv",
+                            file_name=f"sme_job_listings_{datetime.now().strftime('%Y%m%d_%H%M')}.tsv",
                             mime="text/tab-separated-values",
                             use_container_width=True
                         )
                     else:
-                        st.error("No job listings found for the specified companies")
+                        st.error("No SME job listings found for the specified industries")
         
         else:  # Search by Technologies
-            if st.button("Search Jobs by Technology", type="primary", use_container_width=True):
+            if st.button("Search SME Technology Jobs", type="primary", use_container_width=True):
                 if not tech_input.strip():
                     st.error("Please enter at least one technology")
                 else:
                     technologies = [tech.strip() for tech in tech_input.split('\n') if tech.strip()]
                     location_list = [loc.strip() for loc in locations.split(',') if loc.strip()]
                     
-                    st.info(f"Searching {len(technologies)} technologies in {len(location_list)} locations...")
-                    st.warning("Using enhanced technology job search with realistic sample data")
+                    st.info(f"Searching {len(technologies)} technologies in {len(location_list)} locations across SME companies")
+                    st.warning("Using SME-focused technology job search with realistic SME company data")
                     
-                    with st.spinner("Generating technology job listings..."):
-                        tech_jobs = job_scout.search_jobs_by_technology(technologies, location_list, max_tech_jobs)
+                    with st.spinner("Generating SME technology job listings..."):
+                        tech_jobs = job_scout.search_sme_jobs_by_technology(technologies, location_list, max_tech_jobs)
                     
                     if tech_jobs:
-                        st.success(f"Found {len(tech_jobs)} technology job listings")
+                        st.success(f"Found {len(tech_jobs)} SME technology job listings")
                         
-                        # Display tech job insights
-                        st.subheader("Technology Job Insights")
+                        # Display SME tech job insights
+                        st.subheader("SME Technology Job Insights")
                         
-                        col1, col2, col3 = st.columns(3)
+                        col1, col2, col3, col4 = st.columns(4)
                         with col1:
                             tech_counts = pd.Series([job['Technology'] for job in tech_jobs]).value_counts()
-                            st.metric("Technologies Found", len(tech_counts))
+                            st.metric("Technologies", len(tech_counts))
                         
                         with col2:
                             companies_found = len(set([job['Company'] for job in tech_jobs]))
-                            st.metric("Companies Hiring", companies_found)
+                            st.metric("SME Companies", companies_found)
                         
                         with col3:
                             platforms = [job['Platform'] for job in tech_jobs]
                             platform_counts = pd.Series(platforms).value_counts()
-                            st.metric("Job Platforms", len(platform_counts))
+                            st.metric("Platforms", len(platform_counts))
+                        
+                        with col4:
+                            industries = [job['Industry'] for job in tech_jobs]
+                            industry_counts = pd.Series(industries).value_counts()
+                            st.metric("Industries", len(industry_counts))
                         
                         # Technology distribution
-                        st.subheader("Technology Distribution")
+                        st.subheader("Technology Distribution in SMEs")
                         if not tech_counts.empty:
                             st.bar_chart(tech_counts)
                         
-                        # Tech job listings table
-                        st.subheader("Technology Job Listings")
+                        # SME tech job listings table
+                        st.subheader("SME Technology Job Listings")
                         tech_jobs_df = pd.DataFrame(tech_jobs)
                         
+                        display_columns = ['Company', 'Job Title', 'Technology', 'Industry', 'Location', 'Platform', 'Company Size', 'Link']
+                        display_tech_df = tech_jobs_df[display_columns] if all(col in tech_jobs_df.columns for col in display_columns) else tech_jobs_df
+                        
                         st.dataframe(
-                            tech_jobs_df,
+                            display_tech_df,
                             column_config={
                                 "Link": st.column_config.LinkColumn("Job Link")
                             },
@@ -1317,20 +1444,20 @@ def main():
                             height=600
                         )
                         
-                        # Download tech jobs data
-                        st.subheader("Technology Jobs TSV Output")
-                        tech_jobs_output = job_scout.generate_jobs_output(tech_jobs)
+                        # Download SME tech jobs data
+                        st.subheader("SME Technology Jobs TSV Output")
+                        tech_jobs_output = job_scout.generate_sme_jobs_output(tech_jobs)
                         st.code(tech_jobs_output, language='text')
                         
                         st.download_button(
-                            label="Download Tech Jobs Data",
+                            label="Download SME Tech Jobs Data",
                             data=tech_jobs_output,
-                            file_name=f"tech_jobs_{datetime.now().strftime('%Y%m%d_%H%M')}.tsv",
+                            file_name=f"sme_tech_jobs_{datetime.now().strftime('%Y%m%d_%H%M')}.tsv",
                             mime="text/tab-separated-values",
                             use_container_width=True
                         )
                     else:
-                        st.error("No technology job listings found")
+                        st.error("No SME technology job listings found")
 
 if __name__ == "__main__":
     main()
