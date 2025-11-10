@@ -13,8 +13,8 @@ import random
 
 # Page configuration
 st.set_page_config(
-    page_title="🚀 SME Digital Transformation Scout",
-    page_icon="🤖",
+    page_title="SME Digital Transformation Scout",
+    page_icon="",
     layout="wide"
 )
 
@@ -143,7 +143,7 @@ class SMEDigitalTransformationScout:
         all_articles = []
         
         for term in search_terms:
-            st.info(f"🔍 Searching: {term}")
+            st.info(f"Searching: {term}")
             
             # Google News search
             google_articles = self.search_google_news_rss(term, max_results_per_source)
@@ -253,21 +253,21 @@ class SMEDigitalTransformationScout:
         extracted_data = []
         total_batches = (len(articles) + batch_size - 1) // batch_size
         
-        st.info(f"📊 Processing {len(articles)} articles in {total_batches} batches of {batch_size}")
+        st.info(f"Processing {len(articles)} articles in {total_batches} batches of {batch_size}")
         
         for batch_num in range(total_batches):
             start_idx = batch_num * batch_size
             end_idx = min((batch_num + 1) * batch_size, len(articles))
             batch_articles = articles[start_idx:end_idx]
             
-            st.write(f"**Processing batch {batch_num + 1}/{total_batches} (articles {start_idx + 1}-{end_idx})**")
+            st.write(f"Processing batch {batch_num + 1}/{total_batches} (articles {start_idx + 1}-{end_idx})")
             
             batch_data = self._process_batch(batch_articles, batch_num + 1, total_batches)
             extracted_data.extend(batch_data)
             
             # Add delay between batches to avoid rate limits
             if batch_num < total_batches - 1:
-                st.info(f"⏳ Waiting {delay_between_batches} seconds before next batch...")
+                st.info(f"Waiting {delay_between_batches} seconds before next batch...")
                 time.sleep(delay_between_batches)
         
         return extracted_data
@@ -305,7 +305,6 @@ Return EXACT JSON format:
             "employee_count": "employee count if mentioned, else 'Not specified'",
             "digital_transformation": "Yes/No",
             "transformation_details": "specific technologies and projects mentioned",
-            "hiring_trends_2025_2026": "hiring indications if mentioned, else 'Not specified'",
             "company_size_indication": "SME/Startup/Growing Business/Large Enterprise/Unknown",
             "growth_stage": "Early-stage/ Growth-stage/ Mature SME/ Unknown",
             "confidence_score": "high/medium/low"
@@ -318,7 +317,7 @@ If no SME companies found, return: {{"companies": []}}"""
         processed_count = 0
         for i, article in enumerate(batch_articles):
             try:
-                status_text.text(f"🤖 Batch {batch_num}/{total_batches} - Analyzing article {i+1}/{len(batch_articles)}...")
+                status_text.text(f"Batch {batch_num}/{total_batches} - Analyzing article {i+1}/{len(batch_articles)}...")
                 progress_bar.progress((i + 1) / len(batch_articles))
                 
                 content = article['content']
@@ -337,7 +336,6 @@ If no SME companies found, return: {{"companies": []}}"""
                 - SME Indicators: {', '.join(self.SME_INDICATORS)}
                 - Exclude companies based in Kerala
                 - Look for revenue mentions (prefer under 250 crore)
-                - Look for hiring trends for 2025-2026
                 - Focus on small to medium enterprises, not large corporations
                 """
                 
@@ -388,7 +386,6 @@ If no SME companies found, return: {{"companies": []}}"""
                                 'Employee Count': company.get('employee_count', 'Not specified'),
                                 'Digital Transformation': company.get('digital_transformation', 'No'),
                                 'Transformation Details': company.get('transformation_details', 'Digital initiatives mentioned'),
-                                'Hiring Trends 2025-2026': company.get('hiring_trends_2025_2026', 'Not specified'),
                                 'Company Size': company_size,
                                 'Growth Stage': company.get('growth_stage', 'Unknown'),
                                 'SME Score': sme_score,
@@ -412,9 +409,9 @@ If no SME companies found, return: {{"companies": []}}"""
         status_text.empty()
         
         if processed_count > 0:
-            st.success(f"✅ Batch {batch_num}: Processed {processed_count} SME companies")
+            st.success(f"Batch {batch_num}: Processed {processed_count} SME companies")
         else:
-            st.warning(f"⚠️ Batch {batch_num}: No SME companies found in this batch")
+            st.warning(f"Batch {batch_num}: No SME companies found in this batch")
         
         return batch_data
 
@@ -445,11 +442,6 @@ If no SME companies found, return: {{"companies": []}}"""
         details = company['Transformation Details'].lower()
         tech_count = sum(1 for tech in tech_keywords if tech.lower() in details)
         score += min(tech_count, 3)
-        
-        # Hiring trends bonus
-        hiring = company['Hiring Trends 2025-2026'].lower()
-        if 'active' in hiring or 'hiring' in hiring or 'expanding' in hiring:
-            score += 2
         
         # Revenue range scoring (prefer smaller SMEs)
         revenue_range = company.get('Revenue Range', '').lower()
@@ -484,7 +476,7 @@ If no SME companies found, return: {{"companies": []}}"""
         if not companies:
             return "No SME digital transformation companies found"
         
-        output_lines = ["Company Name\tWebsite\tIndustry\tRevenue\tRevenue Range\tEmployee Count\tDigital Transformation\tTransformation Details\tHiring Trends 2025-2026\tCompany Size\tGrowth Stage\tConfidence\tRelevance Score\tSource Link"]
+        output_lines = ["Company Name\tWebsite\tIndustry\tRevenue\tRevenue Range\tEmployee Count\tDigital Transformation\tTransformation Details\tCompany Size\tGrowth Stage\tConfidence\tRelevance Score\tSource Link"]
         
         for company in companies:
             company_name = str(company['Company Name']).replace('\t', ' ').replace('\n', ' ')
@@ -495,14 +487,13 @@ If no SME companies found, return: {{"companies": []}}"""
             employee_count = str(company['Employee Count']).replace('\t', ' ')
             digital_transformation = str(company['Digital Transformation']).replace('\t', ' ')
             transformation_details = str(company['Transformation Details']).replace('\t', ' ').replace('\n', ' ')
-            hiring_trends = str(company['Hiring Trends 2025-2026']).replace('\t', ' ')
             company_size = str(company['Company Size']).replace('\t', ' ')
             growth_stage = str(company['Growth Stage']).replace('\t', ' ')
             confidence = str(company['Confidence']).replace('\t', ' ')
             relevance_score = str(company['Relevance Score'])
             source_link = str(company['Source Link']).replace('\t', ' ')
             
-            output_line = f"{company_name}\t{website}\t{industry}\t{revenue}\t{revenue_range}\t{employee_count}\t{digital_transformation}\t{transformation_details}\t{hiring_trends}\t{company_size}\t{growth_stage}\t{confidence}\t{relevance_score}\t{source_link}"
+            output_line = f"{company_name}\t{website}\t{industry}\t{revenue}\t{revenue_range}\t{employee_count}\t{digital_transformation}\t{transformation_details}\t{company_size}\t{growth_stage}\t{confidence}\t{relevance_score}\t{source_link}"
             output_lines.append(output_line)
         
         return "\n".join(output_lines)
@@ -512,7 +503,7 @@ If no SME companies found, return: {{"companies": []}}"""
         if not companies:
             return
         
-        st.header("📊 SME Digital Transformation Insights")
+        st.header("SME Digital Transformation Insights")
         
         # Create columns for different insights
         col1, col2, col3 = st.columns(3)
@@ -544,16 +535,12 @@ If no SME companies found, return: {{"companies": []}}"""
                 st.info("No technology data available")
         
         with col3:
-            st.subheader("Hiring Trends 2025-2026")
-            hiring_companies = len([c for c in companies if 'hiring' in c['Hiring Trends 2025-2026'].lower() or 'active' in c['Hiring Trends 2025-2026'].lower()])
-            total_companies = len(companies)
-            
-            if total_companies > 0:
-                hiring_percentage = (hiring_companies / total_companies) * 100
-                st.metric("SMEs Hiring (2025-2026)", f"{hiring_percentage:.1f}%")
-                st.metric("Total SMEs Analyzed", total_companies)
+            st.subheader("Confidence Level")
+            confidence_counts = pd.Series([company['Confidence'] for company in companies]).value_counts()
+            if not confidence_counts.empty:
+                st.bar_chart(confidence_counts)
             else:
-                st.metric("SMEs Hiring", "0%")
+                st.info("No confidence data available")
 
 class JobPlatformScout:
     def __init__(self):
@@ -588,7 +575,7 @@ class JobPlatformScout:
         status_text = st.empty()
         
         for i, company_name in enumerate(company_names):
-            status_text.text(f"🔍 Searching jobs for: {company_name}")
+            status_text.text(f"Searching jobs for: {company_name}")
             progress_bar.progress((i + 1) / len(company_names))
             
             company_jobs = self._search_company_jobs(company_name, max_results_per_company)
@@ -792,20 +779,20 @@ class JobPlatformScout:
         return "\n".join(output_lines)
 
 def main():
-    st.title("🚀 SME Digital Transformation Scout")
+    st.title("SME Digital Transformation Scout")
     st.markdown("""
     **Discover Small-to-Medium Indian companies undergoing digital transformation**  
     *Targeting Manufacturing, BFSI, Healthcare & Hospitals (Excluding Kerala)*
     """)
     
     if not st.secrets.get("GROQ_API_KEY"):
-        st.error("🔑 Groq API key required (free at https://console.groq.com)")
+        st.error("Groq API key required (free at https://console.groq.com)")
         st.info("""
         **Get free API key:**
         1. Go to https://console.groq.com
         2. Sign up for free account  
         3. Get your API key
-        4. Add to Streamlit secrets: `GROQ_API_KEY = "your_key"`
+        4. Add to Streamlit secrets: GROQ_API_KEY = "your_key"
         """)
         return
     
@@ -820,13 +807,13 @@ def main():
         st.session_state.all_companies = []
     
     # Create tabs for different functionalities
-    tab1, tab2 = st.tabs(["🏢 SME Digital Transformation Scout", "💼 Job Platform Search"])
+    tab1, tab2 = st.tabs(["SME Digital Transformation Scout", "Job Platform Search"])
     
     with tab1:
-        st.header("🏢 SME Digital Transformation Discovery")
+        st.header("SME Digital Transformation Discovery")
         
         with st.sidebar:
-            st.header("⚙️ SME Search Configuration")
+            st.header("SME Search Configuration")
             
             st.subheader("Target Industries")
             selected_industries = st.multiselect(
@@ -850,44 +837,43 @@ def main():
             delay_between_batches = st.slider("Delay between batches (seconds)", 1, 10, 2)
             
             st.info("""
-            **SME-Focused Features:**
+            SME-Focused Features:
             - Small-to-Medium Enterprise targeting
             - Revenue range analysis (1-250 crore)
-            - Hiring trends 2025-2026
             - Kerala companies excluded
             - Batch processing for large datasets
             """)
         
         # Search Phase
-        if st.button("🌐 Search for SME Articles", type="primary", use_container_width=True):
+        if st.button("Search for SME Articles", type="primary", use_container_width=True):
             if not selected_industries:
-                st.error("❌ Please select at least one industry")
+                st.error("Please select at least one industry")
                 return
                 
             if not selected_technologies:
-                st.error("❌ Please select at least one technology focus")
+                st.error("Please select at least one technology focus")
                 return
             
             # Generate targeted SME search queries
             search_queries = sme_scout.build_sme_search_queries(selected_industries, selected_technologies)
             
-            st.info(f"🔍 Using {len(search_queries)} targeted SME queries across {len(selected_industries)} industries")
+            st.info(f"Using {len(search_queries)} targeted SME queries across {len(selected_industries)} industries")
             
-            with st.spinner("🌐 Comprehensive SME digital transformation search in progress..."):
+            with st.spinner("Comprehensive SME digital transformation search in progress..."):
                 # Perform hybrid search
                 articles = sme_scout.hybrid_search(search_queries, max_per_source)
                 st.session_state.articles = articles
                 
                 if not articles:
                     st.error("""
-                    ❌ No articles found. Possible issues:
+                    No articles found. Possible issues:
                     - Internet connectivity
                     - Search engines temporarily unavailable
                     - Try different industries or technologies
                     """)
                     return
                 
-                st.success(f"✅ Found {len(articles)} relevant SME articles")
+                st.success(f"Found {len(articles)} relevant SME articles")
                 
                 # Display search summary
                 col1, col2 = st.columns(2)
@@ -901,21 +887,21 @@ def main():
         # Show article management if we have articles
         if st.session_state.articles:
             st.markdown("---")
-            st.header("📄 Article Management")
+            st.header("Article Management")
             
             articles = st.session_state.articles
-            st.info(f"📚 Total articles available: {len(articles)}")
+            st.info(f"Total articles available: {len(articles)}")
             
             # Article preview
-            with st.expander("📋 Preview SME Articles (First 10)"):
+            with st.expander("Preview SME Articles (First 10)"):
                 for i, article in enumerate(articles[:10]):
-                    st.write(f"**{i+1}. {article['title']}**")
+                    st.write(f"{i+1}. {article['title']}")
                     st.write(f"Source: {article['source']} | Date: {article['date']}")
-                    st.write(f"[Read more]({article['link']})")
+                    st.write(f"Read more: {article['link']}")
                     st.markdown("---")
             
             # Analysis range selection
-            st.subheader("🔍 AI Analysis Range")
+            st.subheader("AI Analysis Range")
             
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -926,27 +912,27 @@ def main():
                 st.metric("Articles to Analyze", end_index - start_index)
             
             # Batch analysis options
-            st.subheader("⚡ Batch Analysis Options")
+            st.subheader("Batch Analysis Options")
             
             col1, col2 = st.columns(2)
             with col1:
-                analyze_all = st.button("🚀 Analyze All Articles", use_container_width=True, key="analyze_all")
+                analyze_all = st.button("Analyze All Articles", use_container_width=True, key="analyze_all")
             with col2:
-                analyze_range = st.button("🎯 Analyze Selected Range", use_container_width=True, type="primary", key="analyze_range")
+                analyze_range = st.button("Analyze Selected Range", use_container_width=True, type="primary", key="analyze_range")
             
             if analyze_all or analyze_range:
                 if analyze_all:
                     articles_to_analyze = articles
-                    st.info(f"🔄 Analyzing ALL {len(articles)} SME articles")
+                    st.info(f"Analyzing ALL {len(articles)} SME articles")
                 else:
                     articles_to_analyze = articles[start_index:end_index]
-                    st.info(f"🔄 Analyzing articles {start_index} to {end_index} ({len(articles_to_analyze)} articles)")
+                    st.info(f"Analyzing articles {start_index} to {end_index} ({len(articles_to_analyze)} articles)")
                 
                 # AI Analysis Phase
                 st.markdown("---")
-                st.header("🤖 AI Analysis Phase")
+                st.header("AI Analysis Phase")
                 
-                with st.spinner("🤖 AI analyzing for SME digital transformation companies..."):
+                with st.spinner("AI analyzing for SME digital transformation companies..."):
                     # Extract companies using Groq with batch processing
                     companies_data = sme_scout.extract_company_data_with_groq(
                         articles_to_analyze, 
@@ -956,7 +942,7 @@ def main():
                     
                     if not companies_data:
                         st.error("""
-                        ❌ No SME digital transformation companies extracted. This could mean:
+                        No SME digital transformation companies extracted. This could mean:
                         - Articles don't contain specific SME digital transformation info
                         - Try expanding industry selection
                         - Adjust technology focus
@@ -990,13 +976,13 @@ def main():
                         st.session_state.all_companies = list(all_companies_dict.values())
                         st.session_state.all_companies.sort(key=lambda x: x['Relevance Score'], reverse=True)
                     
-                    st.success(f"🎯 Found {len(ranked_companies)} SME companies in this analysis!")
-                    st.success(f"💾 Total SME companies in database: {len(st.session_state.all_companies)}")
+                    st.success(f"Found {len(ranked_companies)} SME companies in this analysis!")
+                    st.success(f"Total SME companies in database: {len(st.session_state.all_companies)}")
         
         # Show results if we have companies
         if st.session_state.all_companies:
             st.markdown("---")
-            st.header("📈 SME Digital Transformation Results")
+            st.header("SME Digital Transformation Results")
             
             companies = st.session_state.all_companies
             
@@ -1008,17 +994,17 @@ def main():
                 confirmed_smes = len([c for c in companies if 'sme' in c['Company Size'].lower()])
                 st.metric("Confirmed SMEs", confirmed_smes)
             with col3:
-                hiring_smes = len([c for c in companies if 'hiring' in c['Hiring Trends 2025-2026'].lower()])
-                st.metric("SMEs Hiring", hiring_smes)
-            with col4:
                 high_confidence = len([c for c in companies if c['Confidence'] == 'high'])
                 st.metric("High Confidence", high_confidence)
+            with col4:
+                unique_industries = len(set([c['Industry'] for c in companies]))
+                st.metric("Industries", unique_industries)
             
             # Display insights
             sme_scout.display_sme_insights(companies)
             
             # Company details table
-            st.subheader("🏢 SME Company Details")
+            st.subheader("SME Company Details")
             df = pd.DataFrame(companies)
             
             # Enhanced styling for SMEs
@@ -1029,24 +1015,28 @@ def main():
                     return 'background-color: #FFE4B5; color: black;'
                 return ''
             
-            def color_hiring_trends(val):
-                if 'hiring' in str(val).lower() or 'active' in str(val).lower():
-                    return 'background-color: #87CEEB; color: black; font-weight: bold;'
-                return ''
+            def color_confidence(val):
+                if val == 'high':
+                    return 'background-color: #90EE90; color: black; font-weight: bold;'
+                elif val == 'medium':
+                    return 'background-color: #FFE4B5; color: black;'
+                else:
+                    return 'background-color: #FFB6C1; color: black;'
             
-            # Select and style relevant columns
+            # Select and style relevant columns (removed Hiring Trends, added Source Link)
             display_columns = ['Company Name', 'Industry', 'Revenue Range', 'Company Size', 
-                              'Digital Transformation', 'Hiring Trends 2025-2026', 'Confidence', 'Relevance Score']
+                              'Digital Transformation', 'Source Link', 'Confidence', 'Relevance Score']
             
             display_df = df[display_columns] if all(col in df.columns for col in display_columns) else df
             
             styled_df = display_df.style.map(color_company_size, subset=['Company Size'])\
-                                      .map(color_hiring_trends, subset=['Hiring Trends 2025-2026'])
+                                      .map(color_confidence, subset=['Confidence'])
             
             # Display the dataframe
             st.dataframe(
                 styled_df,
                 column_config={
+                    "Source Link": st.column_config.LinkColumn("Source"),
                     "Relevance Score": st.column_config.ProgressColumn(
                         "SME Relevance",
                         help="How relevant this SME is to digital transformation",
@@ -1061,13 +1051,13 @@ def main():
             )
             
             # Enhanced Output
-            st.subheader("📋 Enhanced TSV Output - Copy Ready")
+            st.subheader("TSV Output - Copy Ready")
             enhanced_output = sme_scout.generate_enhanced_output(companies)
             st.code(enhanced_output, language='text')
             
             # Download button
             st.download_button(
-                label="💾 Download Complete SME Data",
+                label="Download Complete SME Data",
                 data=enhanced_output,
                 file_name=f"sme_digital_transformation_{datetime.now().strftime('%Y%m%d_%H%M')}.tsv",
                 mime="text/tab-separated-values",
@@ -1075,17 +1065,17 @@ def main():
             )
             
             # Clear data button
-            if st.button("🗑️ Clear All Data", use_container_width=True, key="clear_sme"):
+            if st.button("Clear All Data", use_container_width=True, key="clear_sme"):
                 st.session_state.articles = []
                 st.session_state.all_companies = []
                 st.rerun()
     
     with tab2:
-        st.header("💼 Job Platform Search")
+        st.header("Job Platform Search")
         st.markdown("Search for job announcements on platforms like LinkedIn, Naukri, Indeed, Glassdoor, etc.")
         
         with st.sidebar:
-            st.header("🔍 Job Search Configuration")
+            st.header("Job Search Configuration")
             
             st.subheader("Search Type")
             search_type = st.radio(
@@ -1116,21 +1106,21 @@ def main():
                 max_tech_jobs = st.slider("Max jobs per technology", 1, 30, 10)
         
         if search_type == "Search by Company Names":
-            if st.button("🔍 Search Jobs by Company", type="primary", use_container_width=True):
+            if st.button("Search Jobs by Company", type="primary", use_container_width=True):
                 if not company_input.strip():
-                    st.error("❌ Please enter at least one company name")
+                    st.error("Please enter at least one company name")
                 else:
                     company_names = [name.strip() for name in company_input.split('\n') if name.strip()]
-                    st.info(f"🔍 Searching jobs for {len(company_names)} companies...")
+                    st.info(f"Searching jobs for {len(company_names)} companies...")
                     
                     with st.spinner("Searching job platforms..."):
                         job_listings = job_scout.search_jobs_by_company(company_names, max_jobs_per_company)
                     
                     if job_listings:
-                        st.success(f"✅ Found {len(job_listings)} job listings")
+                        st.success(f"Found {len(job_listings)} job listings")
                         
                         # Display job insights
-                        st.subheader("📊 Job Search Insights")
+                        st.subheader("Job Search Insights")
                         
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -1152,7 +1142,7 @@ def main():
                             st.bar_chart(platform_counts)
                         
                         # Job listings table
-                        st.subheader("💼 Job Listings")
+                        st.subheader("Job Listings")
                         jobs_df = pd.DataFrame(job_listings)
                         
                         # Style the dataframe
@@ -1180,38 +1170,38 @@ def main():
                         )
                         
                         # Download jobs data
-                        st.subheader("📋 Jobs TSV Output")
+                        st.subheader("Jobs TSV Output")
                         jobs_output = job_scout.generate_jobs_output(job_listings)
                         st.code(jobs_output, language='text')
                         
                         st.download_button(
-                            label="💾 Download Jobs Data",
+                            label="Download Jobs Data",
                             data=jobs_output,
                             file_name=f"job_listings_{datetime.now().strftime('%Y%m%d_%H%M')}.tsv",
                             mime="text/tab-separated-values",
                             use_container_width=True
                         )
                     else:
-                        st.error("❌ No job listings found for the specified companies")
+                        st.error("No job listings found for the specified companies")
         
         else:  # Search by Technologies
-            if st.button("🔍 Search Jobs by Technology", type="primary", use_container_width=True):
+            if st.button("Search Jobs by Technology", type="primary", use_container_width=True):
                 if not tech_input.strip():
-                    st.error("❌ Please enter at least one technology")
+                    st.error("Please enter at least one technology")
                 else:
                     technologies = [tech.strip() for tech in tech_input.split('\n') if tech.strip()]
                     location_list = [loc.strip() for loc in locations.split(',') if loc.strip()]
                     
-                    st.info(f"🔍 Searching {len(technologies)} technologies in {len(location_list)} locations...")
+                    st.info(f"Searching {len(technologies)} technologies in {len(location_list)} locations...")
                     
                     with st.spinner("Searching job platforms for technology roles..."):
                         tech_jobs = job_scout.search_jobs_by_technology(technologies, location_list, max_tech_jobs)
                     
                     if tech_jobs:
-                        st.success(f"✅ Found {len(tech_jobs)} technology job listings")
+                        st.success(f"Found {len(tech_jobs)} technology job listings")
                         
                         # Display tech job insights
-                        st.subheader("📊 Technology Job Insights")
+                        st.subheader("Technology Job Insights")
                         
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -1233,7 +1223,7 @@ def main():
                             st.bar_chart(tech_counts)
                         
                         # Tech job listings table
-                        st.subheader("💻 Technology Job Listings")
+                        st.subheader("Technology Job Listings")
                         tech_jobs_df = pd.DataFrame(tech_jobs)
                         
                         st.dataframe(
@@ -1247,19 +1237,19 @@ def main():
                         )
                         
                         # Download tech jobs data
-                        st.subheader("📋 Technology Jobs TSV Output")
+                        st.subheader("Technology Jobs TSV Output")
                         tech_jobs_output = job_scout.generate_jobs_output(tech_jobs)
                         st.code(tech_jobs_output, language='text')
                         
                         st.download_button(
-                            label="💾 Download Tech Jobs Data",
+                            label="Download Tech Jobs Data",
                             data=tech_jobs_output,
                             file_name=f"tech_jobs_{datetime.now().strftime('%Y%m%d_%H%M')}.tsv",
                             mime="text/tab-separated-values",
                             use_container_width=True
                         )
                     else:
-                        st.error("❌ No technology job listings found")
+                        st.error("No technology job listings found")
 
 if __name__ == "__main__":
     main()
